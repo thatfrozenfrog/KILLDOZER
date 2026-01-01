@@ -38,7 +38,6 @@ terminalElement.tabIndex = 0;
 terminalElement.addEventListener("mousedown", () => term.focus());
 
 let isConnected = false;
-await idleTerminal();
 
 async function idleTerminal() {
   term.clear();
@@ -215,3 +214,6 @@ function getCursorPixelPosition(term: Terminal) {
     row: term.buffer.active.cursorY
   };
 }
+
+// Initialize the terminal
+idleTerminal();

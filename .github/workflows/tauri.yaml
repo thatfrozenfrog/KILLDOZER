@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - release
+      - main
 
 # This workflow will trigger on each push to the `release` branch to create or update a GitHub release, build your app, and upload the artifacts to the release.
 
@@ -11,6 +12,7 @@ jobs:
   publish-tauri:
     permissions:
       contents: write
+    if: github.ref == 'refs/heads/release' || (github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, 'Test build'))
     strategy:
       fail-fast: false
       matrix:
