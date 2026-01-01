@@ -1,8 +1,163 @@
-body {
-  margin: 0;
-  background: rgb(47, 47, 47);
+/* Layout and panel structure */
+.main-layout, html > body {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  font-family: var(--font);
 }
 
-#terminal {
- height: 100vh;
+.terminal-panel {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+}
+
+.terminal {
+  flex: 1 1 0;
+  width: 100%;
+  min-height: 0;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+
+.control-panel {
+  width: 320px;
+  min-width: 320px;
+  background: var(--panel);
+  border-left: 1px solid var(--border);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  /* gap: 24px; */
+  overflow-y: auto;
+  box-shadow: 0 0 16px #000a;
+  font-family: var(--font);
+}
+
+.ssh-title {
+  font-size: 2rem;
+  font-weight: bold;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+
+.connection-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.form-label-text {
+  color: var(--muted);
+  font-size: 0.95em;
+}
+
+.input-disabled {
+  opacity: 0.6;
+}
+:root {
+  --bg: #0b0e14;
+  --panel: #111827;
+  --border: #2a2f3a;
+  --text: #d1d5db;
+  --muted: #9ca3af;
+  --accent: #22d3ee;
+  --accent-dim: #0891b2;
+  --danger: #ef4444;
+  --font: "Fira Code", monospace;
+  --font-variant-ligatures: none;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 13px;
+
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  padding: 8px;
+}
+
+.toolbar {
+  display: flex;
+  gap: 6px;
+  border-bottom: 1px solid var(--border);
+  padding: 6px;
+}
+
+button {
+  background: linear-gradient(#1f2937, #020617);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 4px 0px;
+  font-family: var(--font);
+  cursor: pointer;
+}
+
+button:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+button.danger:hover {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+input, select {
+  background: #020617;
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 4px;
+  font-family: var(--font);
+}
+
+input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.list {
+  background: #020617;
+  border: 1px solid var(--border);
+  font-size: 12px;
+}
+
+.list-row {
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+.list-row:hover {
+  background: #020617;
+  color: var(--accent);
+}
+
+.statusbar {
+  font-size: 11px;
+  color: var(--muted);
+  border-top: 1px solid var(--border);
+  padding: 4px 6px;
 }

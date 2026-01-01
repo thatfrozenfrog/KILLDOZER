@@ -1,18 +1,20 @@
 {
-  "name": "tauri-terminal",
+  "name": "killdozer",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.5.3",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "tauri:rs": "cd src-tauri && cargo watch -x \"run --no-default-features\""
   },
   "dependencies": {
+    "@fontsource-variable/jetbrains-mono": "^5.2.8",
     "@tauri-apps/api": "^1.4.0",
-    "xterm": "^5.2.1",
-    "xterm-addon-fit": "^0.7.0"
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/xterm": "^6.0.0"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^1.4.0",

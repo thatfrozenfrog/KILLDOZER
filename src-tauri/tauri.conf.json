@@ -7,8 +7,8 @@
     "withGlobalTauri": true
   },
   "package": {
-    "productName": "tauri-terminal",
-    "version": "0.0.0"
+    "productName": "killdozer",
+    "version": "0.5.3"
   },
   "tauri": {
     "allowlist": {
@@ -27,7 +27,7 @@
         "icons/icon.icns",
         "icons/icon.ico"
       ],
-      "identifier": "com.tauri-terminal.dev",
+      "identifier": "com.wabbit.killdozer",
       "targets": "all"
     },
     "security": {
@@ -40,9 +40,11 @@
       {
         "fullscreen": false,
         "resizable": true,
-        "title": "tauri-terminal",
-        "width": 800,
-        "height": 600
+        "title": "Killdozer - Telehack cheat client",
+        "width": 1200,
+        "height": 700,
+        "minWidth": 1200,
+        "minHeight": 700
       }
     ]
   }

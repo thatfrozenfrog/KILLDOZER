@@ -2,22 +2,41 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <title>Killdozer - SSH Terminal</title>
     <link rel="stylesheet" href="/src/styles.css" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tauri App</title>
-    <script type="module" src="/src/main.ts" defer></script>
-    <style>
-      .logo.vite:hover {
-        filter: drop-shadow(0 0 2em #747bff);
-      }
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&display=swap">
+    <script type="module" src="/src/main.ts"></script>
 
-      .logo.typescript:hover {
-        filter: drop-shadow(0 0 2em #2d79c7);
-      }
-    </style>
+
   </head>
-
   <body>
-    <div id="terminal"></div>
+    <div id="terminal-container" class="panel terminal-panel">
+      <div id="terminal" class="terminal"></div>
+    </div>
+    <aside id="control-panel" class="control-panel">
+      <div class="ssh-title">SSH Connection</div>
+      <form id="connection-form" class="connection-form">
+        <label class="form-label">
+          <span class="form-label-text">Username</span>
+          <input type="text" id="username" value="guest" autocomplete="off" />
+        </label>
+        <label class="form-label">
+          <span class="form-label-text">Host</span>
+          <input type="text" id="host" value="telehack.com" disabled class="input-disabled" />
+        </label>
+        <label class="form-label">
+          <span class="form-label-text">Port</span>
+          <input type="text" id="port" value="2222" disabled class="input-disabled" />
+        </label>
+        <button type="submit" id="connect-btn">Connect</button>
+      </form>
+
+      <br>
+      <button id="disconnect-btn" class="danger" disabled>Disconnect</button>
+      <br>
+      <div class="statusbar" id="status">
+        <span id="status-text">Disconnected</span>
+      </div>
+    </aside>
   </body>
 </html>
