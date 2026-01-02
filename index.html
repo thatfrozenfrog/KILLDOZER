@@ -3,9 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <title>Killdozer - SSH Terminal</title>
-    <link rel="stylesheet" href="/src/styles.css" />
+    <link rel="stylesheet" href="/src/css/styles.css" />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&display=swap">
     <script type="module" src="/src/main.ts"></script>
+    <script type="module" src="/src/cheat/ui.ts"></script>
 
 
   </head>
@@ -13,6 +14,7 @@
     <div id="terminal-container" class="panel terminal-panel">
       <div id="terminal" class="terminal"></div>
     </div>
+    <div id="resize-handle" class="resize-handle"></div>
     <aside id="control-panel" class="control-panel">
       <div class="ssh-title">SSH Connection</div>
       <form id="connection-form" class="connection-form">
@@ -33,9 +35,16 @@
 
       <br>
       <button id="disconnect-btn" class="danger" disabled>Disconnect</button>
-      <br>
       <div class="statusbar" id="status">
+        <hr>
         <span id="status-text">Disconnected</span>
+      </div>
+
+
+      <div id = "cheat">
+        <hr>
+        <input type="text" id="search"  placeholder="Search..." autocomplete="off" />
+        <div id="cheat-list" class="list"></div>
       </div>
     </aside>
   </body>
