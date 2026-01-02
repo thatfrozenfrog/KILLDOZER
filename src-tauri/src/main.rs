@@ -121,7 +121,8 @@ async fn async_create_shell(
     });
     
     // Signal that the shell is ready
-    window.emit("pty:ready", ()).map_err(|e| e.to_string())?;
+    let _ = window.emit("pty:ready", ());
+
     
     Ok(())
 }
