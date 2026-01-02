@@ -26,7 +26,9 @@
 
 .control-panel {
   width: 320px;
-  min-width: 320px;
+  min-width: 250px;
+  max-width: 600px;
+  flex-shrink: 0;
   background: var(--panel);
   border-left: 1px solid var(--border);
   padding: 24px;
@@ -36,6 +38,20 @@
   overflow-y: auto;
   box-shadow: 0 0 16px #000a;
   font-family: var(--font);
+}
+
+.resize-handle {
+  width: 4px;
+  flex-shrink: 0;
+  background: var(--border);
+  cursor: ew-resize;
+  position: relative;
+  transition: background 0.2s ease;
+}
+
+.resize-handle:hover,
+.resize-handle.resizing {
+  background: var(--accent);
 }
 
 .ssh-title {
@@ -158,6 +174,11 @@ input:focus {
 .statusbar {
   font-size: 11px;
   color: var(--muted);
-  border-top: 1px solid var(--border);
-  padding: 4px 6px;
 }
+
+hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 12px 0;
+}
+
