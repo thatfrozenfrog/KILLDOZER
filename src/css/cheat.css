@@ -76,6 +76,7 @@
     transition: background-color 0.2s ease, border-color 0.2s ease;
     border: 1px solid transparent;
     background: transparent;
+    position: relative;
 }
 
 .list-row.cheat:hover {
@@ -96,6 +97,7 @@
 /* Arrow for config expansion */
 .arrow {
     margin-left: 8px;
+    padding: 8px;
     font-size: 1em;
     transition: transform 0.2s ease;
     cursor: pointer;
@@ -112,9 +114,9 @@
 
 /* Config panel */
 .config {
-    padding: 12px;
+    padding: 10px;
     margin-top: 4px;
-    margin-left: 12px;
+    margin-left: 8px;
     background-color: var(--bg);
     border: 1px solid var(--border);
 }
@@ -129,23 +131,28 @@
 
 .config-item label {
     display: flex;
-    flex-direction: row;
+    flex-wrap: nowrap;
     align-items: center;
-    gap: 12px;
+    gap: 8px;
     font-size: 0.9em;
     color: var(--text);
+    width: 100%;
+    white-space: nowrap;
 }
 
 .config-item input[type="text"],
+.config-item input[type="password"],
 .config-item input[type="range"] {
-    flex: 1;
+    flex: 1 1 140px;
+    min-width: 0;
     padding: 6px;
     border: 1px solid var(--border);
-    background-color: var(--panel);
+    background-color: var(--bg);
     color: var(--text);
 }
 
 .config-item input[type="text"]:focus,
+.config-item input[type="password"]:focus,
 .config-item input[type="range"]:focus {
     outline: none;
     border-color: var(--accent);
@@ -154,6 +161,99 @@
 .config-item input[type="checkbox"] {
     margin-left: 8px;
     cursor: pointer;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--border);
+    background-color: var(--bg);
+    position: relative;
+    transition: all 0.2s ease;
+}
+
+.config-item input[type="checkbox"]:checked {
+    background-color: var(--accent);
+    border-color: var(--accent);
+}
+
+.config-item input[type="checkbox"]:checked::after {
+    content: '';
+    position: absolute;
+    left: 4px;
+    top: 1px;
+    width: 5px;
+    height: 9px;
+    border: solid var(--bg);
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+.config-item input[type="checkbox"]:hover {
+    border-color: var(--accent);
+}
+
+/* Keep sliders compact so they do not overflow when panel narrows */
+.config-item input[type="range"] {
+    width: clamp(120px, 50vw, 200px);
+    flex: 1 1 auto;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 6px;
+    background: var(--border);
+    border-radius: 3px;
+    outline: none;
+    padding: 0;
+}
+
+.config-item input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    background: var(--accent);
+    cursor: pointer;
+    border-radius: 50%;
+    border: 2px solid var(--accent);
+    transition: all 0.2s ease;
+}
+
+.config-item input[type="range"]::-webkit-slider-thumb:hover {
+    background: var(--bg);
+    transform: scale(1.1);
+}
+
+.config-item input[type="range"]::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    background: var(--accent);
+    cursor: pointer;
+    border-radius: 50%;
+    border: 2px solid var(--accent);
+    transition: all 0.2s ease;
+}
+
+.config-item input[type="range"]::-moz-range-thumb:hover {
+    background: var(--bg);
+    transform: scale(1.1);
+}
+
+.config-item input[type="range"]::-webkit-slider-runnable-track {
+    background: var(--border);
+    border-radius: 3px;
+    height: 6px;
+}
+
+.config-item input[type="range"]::-moz-range-track {
+    background: var(--border);
+    border-radius: 3px;
+    height: 6px;
+}
+
+.config-item input[type="range"] + span {
+    min-width: 36px;
+    text-align: right;
+    color: var(--muted);
+    font-size: 0.85em;
+    flex: 0 0 auto;
 }
 
 .radio-group {
@@ -177,6 +277,52 @@
 
 .radio-label input[type="radio"] {
     cursor: pointer;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--border);
+    border-radius: 50%;
+    background-color: var(--bg);
+    position: relative;
+    transition: all 0.2s ease;
+}
+
+.radio-label input[type="radio"]:checked {
+    border-color: var(--accent);
+}
+
+.radio-label input[type="radio"]:checked::after {
+    content: '';
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: var(--accent);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.radio-label input[type="radio"]:hover {
+    border-color: var(--accent);
+}
+
+@media (max-width: 520px) {
+    .config {
+        margin-left: 6px;
+        padding: 8px;
+    }
+
+    .config-item input[type="text"],
+    .config-item input[type="password"],
+    .config-item input[type="range"] {
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .config-item input[type="range"] + span {
+        align-self: center;
+    }
 }
 
 /* Search result styles */
@@ -196,4 +342,34 @@
     font-weight: bold;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+}
+
+/* Cheat tooltip */
+.cheat-tooltip {
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    right: 0;
+    margin-bottom: 8px;
+    padding: 8px 12px;
+    background-color: var(--accent);
+    color: var(--bg);
+    font-size: 0.85em;
+    border-radius: 4px;
+    white-space: normal;
+    word-wrap: break-word;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    animation: tooltipFadeIn 0.2s ease;
+}
+
+@keyframes tooltipFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }

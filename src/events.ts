@@ -48,7 +48,7 @@ function toggleVisibility(){
   const form = document.getElementById("connection-form");
   const banner = document.getElementsByClassName("ssh-title")[0] as HTMLElement;
   const cheat = document.getElementById("cheat");
-  if (!form || !banner) return;
+  if (!form || !banner || !cheat) return;
   
   if (isConnected) {
     form.style.display = "none";

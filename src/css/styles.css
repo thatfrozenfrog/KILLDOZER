@@ -182,3 +182,24 @@ hr {
   margin: 12px 0;
 }
 
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background:  var(--panel);
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1f2937;
+  border: 2px solid #1f2937;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #1f2937;
+  border-color: #1f2937;
+}
+
+
+
