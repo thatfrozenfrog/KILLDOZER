@@ -51,6 +51,7 @@ ${c("brightYellow","MMMMMMMMMMM")}
   img.src = mymyPointing;
   img.style.position = "absolute";
   img.classList.add("idle-pointer-image");
+  img.id = "mymy-pointer";
   terminalElement.appendChild(img);
   
   updateIdleImagePosition();
