@@ -6,8 +6,7 @@ import { setIsConnected } from "./shell";
 const connectBtn = document.getElementById("connect-btn") as HTMLButtonElement;
 const disconnectBtn = document.getElementById("disconnect-btn") as HTMLButtonElement;
 const usernameInput = document.getElementById("username") as HTMLInputElement;
-const hostInput = document.getElementById("host") as HTMLInputElement;
-const portInput = document.getElementById("port") as HTMLInputElement;
+const proxyPortInput = document.getElementById("proxy-port") as HTMLInputElement;
 const statusText = document.getElementById("status-text") as HTMLSpanElement;
 
 let isConnected = true;
@@ -24,15 +23,14 @@ export async function setupEventListeners() {
   
   await listen("pty:exit", async () => {
     const term = getTerminal();
-    term.writeln(`\r\n\x1b[33m✓ Shell exited\x1b[0m\r\n`);
+    await term.writeln(`\r\n\x1b[33m✓ Shell exited\x1b[0m\r\n`);
     
     setIsConnected(false);
     statusText.textContent = "Disconnected";
     connectBtn.disabled = false;
     disconnectBtn.disabled = true;
     usernameInput.disabled = false;
-    hostInput.disabled = false;
-    portInput.disabled = false;
+    proxyPortInput.disabled = false;
     await sleep(100);
     term.clear();
     toggleVisibility();
@@ -48,6 +46,10 @@ function toggleVisibility(){
   const form = document.getElementById("connection-form");
   const banner = document.getElementsByClassName("ssh-title")[0] as HTMLElement;
   const cheat = document.getElementById("cheat");
+  const mymy = document.getElementById("mymy-pointer");
+  if (mymy) {
+    mymy.style.display = isConnected ? "none" : "block";
+  }
   if (!form || !banner || !cheat) return;
   
   if (isConnected) {

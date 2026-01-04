@@ -62,3 +62,6 @@ export function c(color: keyof typeof colors, text: string): string {
   return colors[color] + text + colors.reset;
 }
 
+export function randint(min: number, max: number): number {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
