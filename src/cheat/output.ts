@@ -60,11 +60,12 @@ export async function waitStill(
 ) // need to find a way to determine the baud rate
 {
     const startTime = Date.now();
+    let firstBuffer = getViewport();
     let lastBuffer = getViewport();
     while (Date.now() - startTime < timeout) {
         await new Promise((resolve) => setTimeout(resolve, pollInterval));
         const currentBuffer = getViewport();
-        if (JSON.stringify(currentBuffer) === JSON.stringify(lastBuffer)) {
+        if (JSON.stringify(currentBuffer) === JSON.stringify(lastBuffer) && JSON.stringify(currentBuffer) != JSON.stringify(firstBuffer)) {
             return true;
         }
         lastBuffer = currentBuffer;
