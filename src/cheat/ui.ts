@@ -1,12 +1,14 @@
 import "../css/cheat.css";
 import { c } from "../gadget";
 import "./output";
-
+import "./input";
 import {cheatsOrchestrator} from "./pencilgon";
 
 import { DEBUG } from "../main";
 export { Cheat, hack };
 type ConfigType = "input" | "label" | "checker" | "radio" | "slider";
+
+const STORAGE_KEY = "cheat-settings";
 
 interface ConfigOption {
   type: ConfigType;
@@ -75,6 +77,46 @@ const hack: Record<string, Cheat[]> = {
       { type: "slider", label: "WPM", min: 10, max: 200, value: 60 }
     ])
   ]
+}
+
+function saveSettings(): void {
+  const settings: Record<string, any> = {};
+  Object.keys(hack).forEach(cat => {
+    settings[cat] = hack[cat].map(cheat => ({
+      name: cheat.name,
+      enabled: cheat.enabled,
+      config: cheat.config?.map(cfg => ({ label: cfg.label, value: cfg.value }))
+    }));
+  });
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+}
+
+function loadSettings(): void {
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (!saved) return;
+
+  try {
+    const settings = JSON.parse(saved);
+    Object.keys(hack).forEach(cat => {
+      const savedCheats = settings[cat] || [];
+      hack[cat].forEach(cheat => {
+        const savedCheat = savedCheats.find((c: any) => c.name === cheat.name);
+        if (savedCheat) {
+          cheat.enabled = savedCheat.enabled;
+          if (savedCheat.config && cheat.config) {
+            savedCheat.config.forEach((cfg: any) => {
+              const configItem = cheat.config!.find(c => c.label === cfg.label);
+              if (configItem) {
+                configItem.value = cfg.value;
+              }
+            });
+          }
+        }
+      });
+    });
+  } catch (e) {
+    console.error("Failed to load settings:", e);
+  }
 }
 
 const list = document.getElementById("cheat-list");
@@ -182,7 +224,12 @@ function render(category: Record<string, Cheat[]> | string): void {
             row.classList.toggle("active");
             cheat.enabled = row.classList.contains("active");
             console.log(`Cheat "${cheat.name}" is now ${cheat.enabled ? "enabled" : "disabled"}.`);
+            saveSettings();
           };
+
+          if (cheat.enabled) {
+            row.classList.add("active");
+          }
 
           cheatContainer.appendChild(row);
           if (config) cheatContainer.appendChild(config);
@@ -210,6 +257,7 @@ function createConfigElement(config: ConfigOption, cheat: Cheat): HTMLElement {
       input.value = (currentValue as string) || "";
       input.oninput = () => {
         config.value = input.value;
+        saveSettings();
       };
       label.appendChild(input);
       break;
@@ -226,6 +274,7 @@ function createConfigElement(config: ConfigOption, cheat: Cheat): HTMLElement {
       slider.oninput = () => {
         valueDisplay.textContent = slider.value;
         config.value = Number(slider.value);
+        saveSettings();
       };
       label.appendChild(slider);
       label.appendChild(valueDisplay);
@@ -237,6 +286,7 @@ function createConfigElement(config: ConfigOption, cheat: Cheat): HTMLElement {
       checkbox.checked = (currentValue as boolean) || false;
       checkbox.onchange = () => {
         config.value = checkbox.checked;
+        saveSettings();
       }
       label.appendChild(checkbox);
       break;
@@ -254,6 +304,7 @@ function createConfigElement(config: ConfigOption, cheat: Cheat): HTMLElement {
         radio.checked = option === currentValue;
         radio.onchange = () => {
           config.value = option;
+          saveSettings();
         };
         radioWrapper.appendChild(radio);
         radioWrapper.appendChild(document.createTextNode(option));
@@ -368,7 +419,13 @@ function renderSearch(query: string): void {
 
     row.onclick = () => {
       row.classList.toggle("active");
+      item.cheat.enabled = row.classList.contains("active");
+      saveSettings();
     };
+
+    if (item.cheat.enabled) {
+      row.classList.add("active");
+    }
 
     cheatContainer.appendChild(categoryLabel);
     cheatContainer.appendChild(row);
@@ -389,6 +446,7 @@ if (DEBUG) {
   (window as any).hack = hack;
 }
 
+loadSettings();
 render(hack);
 cheatsOrchestrator();
 
