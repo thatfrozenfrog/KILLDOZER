@@ -1,7 +1,7 @@
 [package]
-name = "tauri-terminal"
-version = "0.0.0"
-description = "A Tauri App"
+name = "killdozer"
+version = "0.6.7"
+description = "Killdozer"
 authors = ["you"]
 license = ""
 repository = ""

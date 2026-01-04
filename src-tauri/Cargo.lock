@@ -1438,6 +1438,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "killdozer"
+version = "0.6.7"
+dependencies = [
+ "chrono",
+ "dashmap",
+ "futures",
+ "portable-pty",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tokio",
+ "uuid",
+]
+
+[[package]]
 name = "kuchiki"
 version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2940,22 +2956,6 @@ dependencies = [
  "webview2-com",
  "windows 0.39.0",
  "wry",
-]
-
-[[package]]
-name = "tauri-terminal"
-version = "0.0.0"
-dependencies = [
- "chrono",
- "dashmap",
- "futures",
- "portable-pty",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tokio",
- "uuid",
 ]
 
 [[package]]
