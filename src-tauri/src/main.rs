@@ -22,6 +22,7 @@ async fn async_create_shell(
     username: String,
     host: String,
     port: String,
+    proxyPort: String,
     state: State<'_, AppState>,
     window: Window,
 ) -> Result<(), String> {
@@ -34,28 +35,46 @@ async fn async_create_shell(
             pixel_width: 0,
             pixel_height: 0,
         })
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| {
+            let error_msg = format!("Failed to open PTY: {}", e);
+            println!("[DEBUG] {}", error_msg);
+            error_msg
+        })?;
 
     let reader = pty_pair
         .master
         .try_clone_reader()
-        .map_err(|e| e.to_string())?;
-    let writer = pty_pair.master.take_writer().map_err(|e| e.to_string())?;
+        .map_err(|e| {
+            let error_msg = format!("Failed to clone PTY reader: {}", e);
+            println!("[DEBUG] {}", error_msg);
+            error_msg
+        })?;
+    let writer = pty_pair.master.take_writer().map_err(|e| {
+        let error_msg = format!("Failed to take PTY writer: {}", e);
+        println!("[DEBUG] {}", error_msg);
+        error_msg
+    })?;
 
     let target = format!("{}@{}", username, host);
     let mut cmd = if cfg!(target_os = "windows") {
-        let mut c = CommandBuilder::new("ssh.exe");
-        c.arg("-p");
-        c.arg(port.clone());
-        c.arg(&target);
-        c
+        CommandBuilder::new("ssh.exe")
     } else {
-        let mut c = CommandBuilder::new("ssh");
-        c.arg("-p");
-        c.arg(port);
-        c.arg(&target);
-        c
+        CommandBuilder::new("ssh")
     };
+    
+    cmd.arg("-p");
+    cmd.arg(&port);
+    
+    // Add proxy if proxy_port is not empty
+    if !proxyPort.is_empty() {
+        println!("[DEBUG] Adding proxy command with port: {}", proxyPort);
+        cmd.arg("-o");
+        cmd.arg(format!("ProxyCommand=ncat --proxy 127.0.0.1:{} --proxy-type socks5 %h %p", proxyPort));
+    }
+    
+    println!("[DEBUG] SSH command: ssh -p {} {} (proxy: {})", port, target, if proxyPort.is_empty() { "none" } else { &proxyPort });
+    
+    cmd.arg(&target);
 
     #[cfg(target_os = "windows")]
     cmd.env("TERM", "cygwin");
@@ -66,7 +85,11 @@ async fn async_create_shell(
     let child = pty_pair
         .slave
         .spawn_command(cmd)
-        .map_err(|err| err.to_string())?;
+        .map_err(|err| {
+            let error_msg = format!("Failed to spawn SSH: {}", err);
+            println!("[DEBUG] {}", error_msg);
+            error_msg
+        })?;
 
     // Store the new PTY pair, writer, reader, and child
     *state.pty_pair.lock().await = Some(pty_pair);
