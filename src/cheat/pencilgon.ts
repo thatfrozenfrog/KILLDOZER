@@ -3,7 +3,7 @@ import { sleep } from "../gadget";
 
 import * as autologin from "./module/automation/autologin"
 export const INTERVAL = 250; // milliseconds
-let busy = false;
+export let busy = false;
 export async function cheatsOrchestrator(){
     while (true) {
         if (busy){
@@ -39,3 +39,6 @@ async function tick(cheat: Cheat){
     }
 }
 
+export function setBusy(state: boolean){
+    busy = state;
+}
