@@ -63,7 +63,8 @@ const hack: Record<string, Cheat[]> = {
     new Cheat("Satan", "Auto parse satan.exe memdump output."),
     new Cheat("Autologin", "Auto login as guest / user.", [
       { type: "input", label: "Username", value: "guest" },
-      { type: "input", label: "Password", value: "" }
+      { type: "input", label: "Password", value: "" },
+      { type: "checker", label: "As Guest?", value: true }
     ])
   ],
   Game: [
@@ -268,16 +269,48 @@ function createConfigElement(config: ConfigOption, cheat: Cheat): HTMLElement {
       slider.min = (config.min ?? 0).toString();
       slider.max = (config.max ?? 100).toString();
       slider.step = (config.step ?? 1).toString();
-      slider.value = (currentValue as string) || "50";
-      const valueDisplay = document.createElement("span");
-      valueDisplay.textContent = slider.value;
+      slider.value = (currentValue as string) || ((config.min ?? 0) + Math.floor(((config.max ?? 100) - (config.min ?? 0)) / 2)).toString();
+
+      // allow manual numeric input alongside the slider
+      const numberInput = document.createElement("input");
+      numberInput.type = "number";
+      numberInput.min = slider.min;
+      numberInput.max = slider.max;
+      numberInput.step = slider.step;
+      numberInput.value = slider.value;
+      numberInput.style.width = "56px";
+
+      // update display when slider moves
       slider.oninput = () => {
-        valueDisplay.textContent = slider.value;
+        numberInput.value = slider.value;
         config.value = Number(slider.value);
         saveSettings();
       };
+
+      // when user manually edits the number, normalize to bounds and update slider
+      numberInput.onchange = () => {
+        let v = Number(numberInput.value);
+        const min = Number(slider.min || "0");
+        const max = Number(slider.max || "100");
+        if (isNaN(v)) v = min;
+        if (v < min) v = min;
+        if (v > max) v = max;
+        // align to step
+        const step = Number(slider.step || "1");
+        if (step > 0) {
+          v = Math.round(v / step) * step;
+          // clamp again after rounding
+          if (v < min) v = min;
+          if (v > max) v = max;
+        }
+        numberInput.value = String(v);
+        slider.value = String(v);
+        config.value = v;
+        saveSettings();
+      };
+
       label.appendChild(slider);
-      label.appendChild(valueDisplay);
+      label.appendChild(numberInput);
       break;
 
     case "checker":

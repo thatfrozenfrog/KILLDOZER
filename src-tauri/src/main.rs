@@ -22,7 +22,11 @@ async fn async_create_shell(
     username: String,
     host: String,
     port: String,
-    proxyPort: String,
+    proxy_address: String,
+    proxy_port: String,
+    proxy_auth_enabled: bool,
+    proxy_username: String,
+    proxy_password: String,
     state: State<'_, AppState>,
     window: Window,
 ) -> Result<(), String> {
@@ -66,13 +70,31 @@ async fn async_create_shell(
     cmd.arg(&port);
     
     // Add proxy if proxy_port is not empty
-    if !proxyPort.is_empty() {
-        println!("[DEBUG] Adding proxy command with port: {}", proxyPort);
+    if !proxy_port.is_empty() {
+        let proxy_host = if proxy_address.is_empty() { "127.0.0.1".to_string() } else { proxy_address.clone() };
+        println!("[DEBUG] Adding proxy command with {}:{}", proxy_host, proxy_port);
         cmd.arg("-o");
-        cmd.arg(format!("ProxyCommand=ncat --proxy 127.0.0.1:{} --proxy-type socks5 %h %p", proxyPort));
+        if proxy_auth_enabled {
+            cmd.arg(format!(
+                "ProxyCommand=ncat --proxy {}:{} --proxy-type socks5 --proxy-auth {}:{} %h %p",
+                proxy_host, proxy_port, proxy_username, proxy_password
+            ));
+        } else {
+            cmd.arg(format!(
+                "ProxyCommand=ncat --proxy {}:{} --proxy-type socks5 %h %p",
+                proxy_host, proxy_port
+            ));
+        }
     }
-    
-    println!("[DEBUG] SSH command: ssh -p {} {} (proxy: {})", port, target, if proxyPort.is_empty() { "none" } else { &proxyPort });
+
+    println!(
+        "[DEBUG] SSH command: ssh -p {} {} (proxy: {}:{} auth:{})",
+        port,
+        target,
+        if proxy_port.is_empty() { "none" } else { &proxy_address },
+        if proxy_port.is_empty() { "" } else { &proxy_port },
+        if proxy_auth_enabled { "on" } else { "off" }
+    );
     
     cmd.arg(&target);
 
@@ -151,12 +173,23 @@ async fn async_create_shell(
 }
 
 #[tauri::command]
-async fn async_write_to_pty(data: &str, state: State<'_, AppState>) -> Result<(), ()> {
+async fn async_write_to_pty(data: &str, state: State<'_, AppState>) -> Result<(), String> {
     let mut writer_guard = state.writer.lock().await;
     if let Some(writer) = writer_guard.as_mut() {
-        write!(writer, "{}", data).map_err(|_| ())?;
+        if let Err(e) = writer.write_all(data.as_bytes()) {
+            let err = format!("Failed to write to PTY: {}", e);
+            println!("[DEBUG] {}", err);
+            return Err(err);
+        }
+        if let Err(e) = writer.flush() {
+            println!("[DEBUG] Failed to flush PTY writer: {}", e);
+        }
+        Ok(())
+    } else {
+        let msg = "async_write_to_pty called but writer is None".to_string();
+        println!("[DEBUG] {}", msg);
+        Err(msg)
     }
-    Ok(())
 }
 
 #[tauri::command]

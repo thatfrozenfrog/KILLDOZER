@@ -4,6 +4,9 @@ import { writeToPty } from "../shell";
 import {sleep, randint} from "../gadget";
 import * as stdout from "./output";
 
+/**
+ * Special key sequences mapping for terminal control
+ */
 const SPECIAL_KEY_SEQUENCES = {
     Backspace: "\x7F",
     Enter: "\r",
@@ -47,6 +50,11 @@ function combination(ch:string, modifiers = {ctrl: false, alt: false}): string {
     return result;
 }
 
+/**
+ * Sends a special key or single character to the terminal with optional modifiers
+ * @param event - Key name from SPECIAL_KEY_SEQUENCES or a single character
+ * @param modifiers - Optional keyboard modifiers (ctrl, alt)
+ */
 export async function sendkey(event: string, modifiers = {ctrl: false, alt: false}) {
     let data = "";
     if (event in SPECIAL_KEY_SEQUENCES) {
@@ -62,7 +70,10 @@ export async function sendkey(event: string, modifiers = {ctrl: false, alt: fals
     }
 }
 
-
+/**
+ * Sends raw data to the terminal
+ * @param data - String data to send to the PTY
+ */
 export async function send(data: string) {
     if (!term) return;
     writeToPty(data);
@@ -73,6 +84,15 @@ function weightedRandom(min: number, max: number, bias = 0.7) {
   return min + r * (max - min);
 }
 
+/**
+ * Types text character by character with human-like delays and momentum
+ * Simulates realistic typing with variable speed, pauses, and rhythm
+ * @param data - Text string to type
+ * @param option - Optional typing behavior configuration
+ * @param option.min - Minimum delay between keystrokes in milliseconds (default: 35)
+ * @param option.max - Maximum delay between keystrokes in milliseconds (default: 110)
+ * @param option.pause - Pause chance - probability of random pauses (default: 0.03)
+ */
 export async function type(
     data: string, 
     option?: {
@@ -116,6 +136,14 @@ export async function type(
     }
 }
 
+/**
+ * Executes a Telehack command and returns the output
+ * Automatically handles pagination ("More" prompts)
+ * Uses a special marker (ᛉ) to identify command boundaries
+ * @param command - Command to execute
+ * @param lag - Poll interval for waiting (default: 100ms)
+ * @returns Array of output lines (excluding the marker and command)
+ */
 export async function th_exec(command:string, lag: number = 100): Promise<Array<string>> {
     await send(command);
     await term.write("ᛉ");

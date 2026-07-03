@@ -97,15 +97,27 @@
 /* Arrow for config expansion */
 .arrow {
     margin-left: 8px;
-    padding: 8px;
-    font-size: 1em;
-    transition: transform 0.2s ease;
+    /* make the arrow visually proportional to buttons */
+    padding: 6px;
+    font-size: 1.15em;
+    width: 36px;
+    height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    transition: transform 0.18s ease, background-color 0.12s ease;
     cursor: pointer;
     color: var(--muted);
+    /* boxed outline so user sees click target */
+    border: 1px solid var(--border);
+    background-color: transparent;
 }
 
 .arrow:hover {
     color: var(--accent);
+    background-color: rgba(255,255,255,0.02);
+    border-color: var(--accent);
 }
 
 .arrow.expanded {
@@ -142,6 +154,7 @@
 
 .config-item input[type="text"],
 .config-item input[type="password"],
+.config-item input[type="number"],
 .config-item input[type="range"] {
     flex: 1 1 140px;
     min-width: 0;
@@ -197,8 +210,9 @@
     flex: 1 1 auto;
     -webkit-appearance: none;
     appearance: none;
-    height: 6px;
-    background: var(--border);
+    /* increase container height so thumb can center properly */
+    height: 16px;
+    background: transparent;
     border-radius: 3px;
     outline: none;
     padding: 0;
@@ -216,6 +230,11 @@
     transition: all 0.2s ease;
 }
 
+.config-item input[type="range"]::-webkit-slider-thumb {
+    /* nudge thumb vertically to center on the track */
+    margin-top: -5px;
+}
+
 .config-item input[type="range"]::-webkit-slider-thumb:hover {
     background: var(--bg);
     transform: scale(1.1);
@@ -231,6 +250,12 @@
     transition: all 0.2s ease;
 }
 
+.config-item input[type="range"]::-moz-range-thumb {
+    /* Firefox needs a translate to vertically center */
+    transform: translateY(0);
+    margin-top: -5px;
+}
+
 .config-item input[type="range"]::-moz-range-thumb:hover {
     background: var(--bg);
     transform: scale(1.1);
@@ -240,6 +265,8 @@
     background: var(--border);
     border-radius: 3px;
     height: 6px;
+    /* center the track inside the taller input area */
+    margin: 5px 0;
 }
 
 .config-item input[type="range"]::-moz-range-track {
@@ -315,6 +342,7 @@
 
     .config-item input[type="text"],
     .config-item input[type="password"],
+    .config-item input[type="number"],
     .config-item input[type="range"] {
         width: 100%;
         max-width: 100%;

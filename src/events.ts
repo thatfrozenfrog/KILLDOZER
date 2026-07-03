@@ -1,7 +1,7 @@
 import { listen } from "@tauri-apps/api/event";
 import { sleep } from './gadget';
 import { getTerminal, fitTerminal, idleTerminal } from "./terminal";
-import { setIsConnected } from "./shell";
+import { getIsConnected, setIsConnected } from "./shell";
 
 const connectBtn = document.getElementById("connect-btn") as HTMLButtonElement;
 const disconnectBtn = document.getElementById("disconnect-btn") as HTMLButtonElement;
@@ -9,11 +9,10 @@ const usernameInput = document.getElementById("username") as HTMLInputElement;
 const proxyPortInput = document.getElementById("proxy-port") as HTMLInputElement;
 const statusText = document.getElementById("status-text") as HTMLSpanElement;
 
-let isConnected = true;
-
 export async function setupEventListeners() {
   await listen("pty:ready", () => {
-    toggleVisibility();
+    setIsConnected(true);
+    syncConnectionUi();
   });
   
   await listen<string>("pty:data", (event) => {
@@ -26,6 +25,7 @@ export async function setupEventListeners() {
     await term.writeln(`\r\n\x1b[33m✓ Shell exited\x1b[0m\r\n`);
     
     setIsConnected(false);
+    syncConnectionUi();
     statusText.textContent = "Disconnected";
     connectBtn.disabled = false;
     disconnectBtn.disabled = true;
@@ -33,7 +33,6 @@ export async function setupEventListeners() {
     proxyPortInput.disabled = false;
     await sleep(100);
     term.clear();
-    toggleVisibility();
     idleTerminal();
   });
 }
@@ -42,25 +41,25 @@ export function setupResizeListener(isConnected: boolean) {
   addEventListener("resize", () => fitTerminal(isConnected));
 }
 
-function toggleVisibility(){
+export function syncConnectionUi(){
   const form = document.getElementById("connection-form");
   const banner = document.getElementsByClassName("ssh-title")[0] as HTMLElement;
   const cheat = document.getElementById("cheat");
   const mymy = document.getElementById("mymy-pointer");
+  const connected = getIsConnected();
+
   if (mymy) {
-    mymy.style.display = isConnected ? "none" : "block";
+    mymy.style.display = connected ? "none" : "block";
   }
   if (!form || !banner || !cheat) return;
   
-  if (isConnected) {
+  if (connected) {
     form.style.display = "none";
     banner.style.display = "none";
     cheat.style.display = "block";
-    isConnected = false;
   } else {
     form.style.display = "flex";
     banner.style.display = "block";
-    // cheat.style.display = "none";
-    isConnected = true;
+    cheat.style.display = "none";
   }
 }

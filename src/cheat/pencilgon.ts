@@ -5,6 +5,7 @@ import * as autologin from "./module/automation/autologin"
 export const INTERVAL = 250; // milliseconds
 export let busy = false;
 export async function cheatsOrchestrator(){
+    console.log("[DEBUG] cheatsOrchestrator running");
     while (true) {
         if (busy){
             await sleep(INTERVAL);

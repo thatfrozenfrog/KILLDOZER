@@ -25,9 +25,33 @@
         </label>
 
         <label class="form-label">
+          <span class="form-label-text">Proxy IP (optional)</span>
+          <input type="text" id="proxy-ip" placeholder="e.g., 127.0.0.1" autocomplete="off" />
+        </label>
+
+        <label class="form-label">
           <span class="form-label-text">Proxy Port (optional)</span>
           <input type="text" id="proxy-port" placeholder="e.g., 9050" autocomplete="off" />
         </label>
+
+        <label class="form-label checkbox-label">
+          <input type="checkbox" id="proxy-auth-enabled" />
+          <span class="form-label-text">Authentication?</span>
+        </label>
+
+        <div id="proxy-auth-fields" class="proxy-auth-fields hidden">
+          <label class="form-label">
+            <span class="form-label-text">Proxy username</span>
+            <input type="text" id="proxy-username" placeholder="Proxy username" autocomplete="off" />
+          </label>
+
+          <label class="form-label">
+            <span class="form-label-text">Proxy password</span>
+            <input type="password" id="proxy-password" placeholder="Proxy password" autocomplete="off" />
+          </label>
+        </div>
+
+
 
         <button type="submit" id="connect-btn">Connect</button>
       </form>

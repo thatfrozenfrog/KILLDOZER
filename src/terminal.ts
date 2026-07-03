@@ -47,6 +47,11 @@ ${c("brightYellow","MMMMMMMMMMM")}
   const connectButton = document.querySelector<HTMLButtonElement>("#connect-btn");
   if (!connectButton) return;
   
+  const existingImg = terminalElement.querySelector<HTMLImageElement>(".idle-pointer-image");
+  if (existingImg) {
+    existingImg.remove();
+  }
+
   const img = document.createElement("img");
   img.src = mymyPointing;
   img.style.position = "absolute";

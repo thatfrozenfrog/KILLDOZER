@@ -67,10 +67,35 @@
   gap: 16px;
 }
 
+.hidden {
+  display: none;
+}
+
 .form-label {
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+.checkbox-label {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.proxy-auth-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-left: 24px;
+  border-left: 1px solid var(--border);
 }
 
 .form-label-text {
