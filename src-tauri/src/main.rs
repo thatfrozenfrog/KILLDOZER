@@ -1,6 +1,6 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-
+use tauri::Emitter;
 use portable_pty::{native_pty_system, Child, CommandBuilder, PtyPair, PtySize};
 use std::{
     io::{BufRead, BufReader, Read, Write},
@@ -45,14 +45,11 @@ async fn async_create_shell(
             error_msg
         })?;
 
-    let reader = pty_pair
-        .master
-        .try_clone_reader()
-        .map_err(|e| {
-            let error_msg = format!("Failed to clone PTY reader: {}", e);
-            println!("[DEBUG] {}", error_msg);
-            error_msg
-        })?;
+    let reader = pty_pair.master.try_clone_reader().map_err(|e| {
+        let error_msg = format!("Failed to clone PTY reader: {}", e);
+        println!("[DEBUG] {}", error_msg);
+        error_msg
+    })?;
     let writer = pty_pair.master.take_writer().map_err(|e| {
         let error_msg = format!("Failed to take PTY writer: {}", e);
         println!("[DEBUG] {}", error_msg);
@@ -65,14 +62,21 @@ async fn async_create_shell(
     } else {
         CommandBuilder::new("ssh")
     };
-    
+
     cmd.arg("-p");
     cmd.arg(&port);
-    
+
     // Add proxy if proxy_port is not empty
     if !proxy_port.is_empty() {
-        let proxy_host = if proxy_address.is_empty() { "127.0.0.1".to_string() } else { proxy_address.clone() };
-        println!("[DEBUG] Adding proxy command with {}:{}", proxy_host, proxy_port);
+        let proxy_host = if proxy_address.is_empty() {
+            "127.0.0.1".to_string()
+        } else {
+            proxy_address.clone()
+        };
+        println!(
+            "[DEBUG] Adding proxy command with {}:{}",
+            proxy_host, proxy_port
+        );
         cmd.arg("-o");
         if proxy_auth_enabled {
             cmd.arg(format!(
@@ -91,11 +95,19 @@ async fn async_create_shell(
         "[DEBUG] SSH command: ssh -p {} {} (proxy: {}:{} auth:{})",
         port,
         target,
-        if proxy_port.is_empty() { "none" } else { &proxy_address },
-        if proxy_port.is_empty() { "" } else { &proxy_port },
+        if proxy_port.is_empty() {
+            "none"
+        } else {
+            &proxy_address
+        },
+        if proxy_port.is_empty() {
+            ""
+        } else {
+            &proxy_port
+        },
         if proxy_auth_enabled { "on" } else { "off" }
     );
-    
+
     cmd.arg(&target);
 
     #[cfg(target_os = "windows")]
@@ -104,14 +116,11 @@ async fn async_create_shell(
     #[cfg(not(target_os = "windows"))]
     cmd.env("TERM", "xterm-256color");
 
-    let child = pty_pair
-        .slave
-        .spawn_command(cmd)
-        .map_err(|err| {
-            let error_msg = format!("Failed to spawn SSH: {}", err);
-            println!("[DEBUG] {}", error_msg);
-            error_msg
-        })?;
+    let child = pty_pair.slave.spawn_command(cmd).map_err(|err| {
+        let error_msg = format!("Failed to spawn SSH: {}", err);
+        println!("[DEBUG] {}", error_msg);
+        error_msg
+    })?;
 
     // Store the new PTY pair, writer, reader, and child
     *state.pty_pair.lock().await = Some(pty_pair);
@@ -123,7 +132,7 @@ async fn async_create_shell(
     let reader = state.reader.clone();
     let session_window = window.clone();
     let _ready_window = window.clone();
-    
+
     thread::spawn(move || {
         loop {
             let data = {
@@ -138,9 +147,9 @@ async fn async_create_shell(
                 if reader_guard.is_none() {
                     break;
                 }
-                
+
                 let reader_ref = reader_guard.as_mut().unwrap();
-                
+
                 let buf = match reader_ref.fill_buf() {
                     Ok(buf) => buf,
                     Err(_) => break,
@@ -161,14 +170,13 @@ async fn async_create_shell(
                 let _ = session_window.emit("pty:data", data);
             }
         }
-        
+
         let _ = session_window.emit("pty:exit", ());
     });
-    
+
     // Signal that the shell is ready
     let _ = window.emit("pty:ready", ());
 
-    
     Ok(())
 }
 
@@ -213,24 +221,23 @@ async fn async_terminate_shell(state: State<'_, AppState>) -> Result<(), String>
         let _ = child.kill();
     }
 
-
     thread::sleep(std::time::Duration::from_millis(100));
-    
 
     *state.pty_pair.lock().await = None;
-    
+
     thread::sleep(std::time::Duration::from_millis(50));
 
     *state.reader.lock().await = None;
-    
 
     *state.writer.lock().await = None;
-    
+
     Ok(())
 }
 
 fn main() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_shell::init())
         .manage(AppState {
             pty_pair: Arc::new(AsyncMutex::new(None)),
             writer: Arc::new(AsyncMutex::new(None)),

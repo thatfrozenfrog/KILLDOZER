@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/tauri";
+import { invoke } from "@tauri-apps/api/core";
 import { getTerminal, getTerminalElement, fitTerminal, idleTerminal } from "./terminal";
 import { syncConnectionUi } from "./events";
 

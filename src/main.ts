@@ -29,5 +29,5 @@ async function main() {
   idleTerminal();
 }
 
-main();
+document.addEventListener("DOMContentLoaded", main);
 

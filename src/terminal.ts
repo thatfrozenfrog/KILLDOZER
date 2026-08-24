@@ -4,19 +4,27 @@ import { c } from './gadget';
 import mymyPointing from "./img/mymyPointing.png";
 import "@xterm/xterm/css/xterm.css";
 import "@fontsource-variable/jetbrains-mono";
+import {invoke} from "@tauri-apps/api/core";
 
-const terminalElement = document.getElementById("terminal") as HTMLElement;
-const fitAddon = new FitAddon();
+let terminalElement: HTMLElement;
+let fitAddon: FitAddon;
+let term: Terminal;
 
-const term = new Terminal({
-  fontFamily: "JetBrains Mono Variable, JetBrains Mono, monospace",
-  fontSize: 14,
-  theme: {
-    background: "rgb(47, 47, 47)",
-  },
-});
+
 
 export function initTerminal() {
+  terminalElement = document.getElementById("terminal") as HTMLElement;
+  fitAddon = new FitAddon();
+
+  term = new Terminal({
+    fontFamily: "JetBrains Mono Variable, JetBrains Mono, monospace",
+    fontSize: 14,
+    theme: {
+      background: "rgb(47, 47, 47)",
+    },
+  });
+
+
   term.options.convertEol = true;
   term.options.fontFamily = "monospace";
 
@@ -77,7 +85,7 @@ export function updateIdleImagePosition() {
 export async function fitTerminal(isConnected: boolean) {
   fitAddon.fit();
   if (isConnected) {
-    const { invoke } = await import("@tauri-apps/api/tauri");
+    
     void invoke("async_resize_pty", {
       cols: term.cols,
       rows: term.rows,
