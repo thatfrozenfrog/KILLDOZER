@@ -1,0 +1,25 @@
+pkgname=killdozer
+pkgver=1.0.0
+pkgrel=1
+pkgdesc="Killdozer"
+arch=('x86_64')
+license=('MIT')
+
+depends=(
+  'webkit2gtk-4.1'
+  'gtk3'
+)
+
+package() {
+  install -Dm755 \
+    "$srcdir/../../../src-tauri/target/release/killdozer" \
+    "$pkgdir/usr/bin/killdozer"
+
+  install -Dm644 \
+    "$srcdir/../killdozer.desktop" \
+    "$pkgdir/usr/share/applications/killdozer.desktop"
+
+  install -Dm644 \
+    "$srcdir/../../../src-tauri/icons/128x128.png" \
+    "$pkgdir/usr/share/icons/hicolor/128x128/apps/killdozer.png"
+}

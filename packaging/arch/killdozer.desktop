@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Killdozer
+Exec=killdozer
+Icon=killdozer
+Terminal=false
+Categories=Utility;
