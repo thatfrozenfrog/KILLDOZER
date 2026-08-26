@@ -9,15 +9,25 @@ export interface ConfigOption {
   options?: string[];
   value?: string | number | boolean;
 }
-
+/**
+ * A cheat inside a category.
+ * @example
+ * ```ts
+ * new Cheat("Porthack", "Auto port guessing / autoporting.", [
+ *      { type: "slider", label: "Speed", min: 1, max: 100, value: 50 },
+ *    ]),
+ */
 export class Cheat {
   name: string;
   description: string;
+  /**
+   * Optional array of configs for this cheat. Each config can be of type input, label, checker, radio, or slider.
+   */
   config?: ConfigOption[];
   enabled: boolean = false;
 
   constructor(name: string, description: string, config?: ConfigOption[]) {
-    this.name = name;
+    this.name = name; 
     this.description = description;
     this.config = config;
   }
