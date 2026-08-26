@@ -252,7 +252,7 @@ function buildConfigPanel(pane: Pane, category: string, cheat: Cheat): HTMLEleme
   status.textContent = cheat.enabled ? "ON" : "OFF";
   status.classList.toggle("enabled", cheat.enabled);
   details.append(eyebrow, title, description, status);
-  // const close = document.createElement("button");
+  // const close = document.createElement("button");  <- gyg
   // close.type = "button";
   // close.className = "cheat-config-close";
   // close.textContent = "Close";
