@@ -1,486 +1,366 @@
-import "../css/cheat.css";
-import { c } from "../gadget";
-import "./output";
-import "./input";
-import {cheatsOrchestrator} from "./pencilgon";
+import type { Pane } from "../pane";
+import { getFocusedPane } from "../workspace";
+import { onChromeChange } from "../chrome";
+import {
+  Cheat,
+  ConfigOption,
+  countActive,
+  saveDefaultCheats,
+} from "./registry";
+import { filterCheats, type CheatFilters } from "./filter";
+import { CustomDropdown } from "./dropdown";
 
-import { DEBUG } from "../main";
-export { Cheat, hack };
-type ConfigType = "input" | "label" | "checker" | "radio" | "slider";
+let renderedPane: Pane | null = null;
+let configuring: Cheat | null = null;
+let categoryDropdown: CustomDropdown | null = null;
+const filters: CheatFilters = { query: "", category: "", status: "all" };
+const DRAWER_WIDTH_KEY = "cheats-drawer-width";
+const MIN_DRAWER_WIDTH = 320;
+const MAX_DRAWER_WIDTH = 720;
 
-const STORAGE_KEY = "cheat-settings";
-
-interface ConfigOption {
-  type: ConfigType;
-  label: string;
-  min?: number;
-  max?: number;
-  step?: number;
-  options?: string[];
-  value?: string | number | boolean;
+function list(): HTMLElement {
+  return document.getElementById("cheat-list") as HTMLElement;
 }
 
-class Cheat {
-  name: string;
-  description: string;
-  config?: ConfigOption[];
-
-  enabled: boolean = false;
-
-  constructor(name: string, description: string, config?: ConfigOption[]) {
-    this.name = name;
-    this.description = description;
-    this.config = config;
-  }
-
-  getConfigByLabel(label: string): ConfigOption | undefined {
-    return this.config?.find(cfg => cfg.label.toLowerCase() === label.toLowerCase());
-  }
-
-  getValue(label: string): any {
-    return this.getConfigByLabel(label)?.value;
-  }
-
-  getStatus() {
-    const values: Record<string, any> = {};
-    this.config?.forEach(cfg => {
-      values[cfg.label] = cfg.value;
-    });
-    return {
-      enabled: this.enabled,
-      values
-    };
-  }
-
+function updateActiveCount(pane: Pane): void {
+  const el = document.getElementById("active-count");
+  if (el) el.textContent = countActive(pane.cheats) + " active";
 }
 
-const hack: Record<string, Cheat[]> = {
-  Automation: [
-    new Cheat("Autovon", "Auto parse and decode autovon.exe dialup sequence."),
-    new Cheat("Porthack", "Auto port guessing / autoporting.", [
-      { type: "slider", label: "Speed", min: 1, max: 100, value: 50 }
-    ]),
-    new Cheat("Satan", "Auto parse satan.exe memdump output."),
-    new Cheat("Autologin", "Auto login as guest / user.", [
-      { type: "input", label: "Username", value: "guest" },
-      { type: "input", label: "Password", value: "" },
-      { type: "checker", label: "As Guest?", value: true }
-    ])
-  ],
-  Game: [
-    new Cheat("Sudoku", "Auto solve sudoku puzzles.", [
-      { type: "slider", label: "Speed", min: 1, max: 100, value: 50 }
-    ]),
-    new Cheat("2048", "Auto play 2048.", [
-      { type: "radio", label: "Strategy", options: ["Conservative", "Aggressive", "Random"], value: "Conservative" }
-    ]),
-    new Cheat("Typespeed", "Auto play typespeed.", [
-      { type: "slider", label: "WPM", min: 10, max: 200, value: 60 }
-    ])
-  ]
+function showToast(message: string): void {
+  const toast = document.createElement("div");
+  toast.className = "toast";
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 2000);
 }
 
-function saveSettings(): void {
-  const settings: Record<string, any> = {};
-  Object.keys(hack).forEach(cat => {
-    settings[cat] = hack[cat].map(cheat => ({
-      name: cheat.name,
-      enabled: cheat.enabled,
-      config: cheat.config?.map(cfg => ({ label: cfg.label, value: cfg.value }))
-    }));
+function persist(pane: Pane): void {
+  if (pane.isDefault) saveDefaultCheats(pane.cheats);
+}
+
+function buildCheatCard(pane: Pane, cheat: Cheat): HTMLElement {
+  const card = document.createElement("button");
+  card.type = "button";
+  card.className = "cheat-card";
+  card.title = cheat.description;
+  card.setAttribute("aria-pressed", String(cheat.enabled));
+  if (cheat.enabled) card.classList.add("active");
+  if (configuring === cheat) card.classList.add("configuring");
+
+  const name = document.createElement("span");
+  name.className = "cheat-name";
+  name.textContent = cheat.name;
+  const action = document.createElement("span");
+  action.className = "cheat-action";
+  action.textContent = cheat.enabled ? "Enabled" : "Disabled";
+  card.append(name, action);
+
+  card.addEventListener("click", () => {
+    cheat.enabled = !cheat.enabled;
+    showToast(cheat.name + (cheat.enabled ? " enabled" : " disabled"));
+    persist(pane);
+    render(pane);
   });
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+  card.addEventListener("contextmenu", (event) => {
+    event.preventDefault();
+    if (!cheat.config?.length) return;
+    configuring = configuring === cheat ? null : cheat;
+    render(pane);
+  });
+  card.addEventListener("keydown", (event) => {
+    if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) {
+      event.preventDefault();
+      if (!cheat.config?.length) return;
+      configuring = cheat;
+      render(pane);
+    }
+  });
+  return card;
 }
 
-function loadSettings(): void {
-  const saved = localStorage.getItem(STORAGE_KEY);
-  if (!saved) return;
-
-  try {
-    const settings = JSON.parse(saved);
-    Object.keys(hack).forEach(cat => {
-      const savedCheats = settings[cat] || [];
-      hack[cat].forEach(cheat => {
-        const savedCheat = savedCheats.find((c: any) => c.name === cheat.name);
-        if (savedCheat) {
-          cheat.enabled = savedCheat.enabled;
-          if (savedCheat.config && cheat.config) {
-            savedCheat.config.forEach((cfg: any) => {
-              const configItem = cheat.config!.find(c => c.label === cfg.label);
-              if (configItem) {
-                configItem.value = cfg.value;
-              }
-            });
-          }
-        }
-      });
-    });
-  } catch (e) {
-    console.error("Failed to load settings:", e);
-  }
-}
-
-const list = document.getElementById("cheat-list");
-const search = document.getElementById("search") as HTMLInputElement;
-if (!list) {
-  throw new Error("Cheat list element not found");
-}
-if (!search) {
-  throw new Error("Search input element not found");
-}
-function fuzzyMatch(text: string, query: string): boolean {
-  const pattern = query.split('').map(c => c.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')).join('.*?');
-  const regex = new RegExp(pattern, 'i');
-  return regex.test(text);
-}
-
-
-function render(category: Record<string, Cheat[]> | string): void {
-  if (!list) {
-    throw new Error("Cheat list element not found");
-  }
-  list.innerHTML = "";
-
-  Object.keys(hack)
-    .sort()
-    .forEach(cat => {
-      const catRow = document.createElement("div");
-      catRow.className = "list-row category";
-      catRow.textContent = cat;
-
-      const content = document.createElement("div");
-      content.className = "category-content hidden";
-
-      catRow.onclick = () => {
-        content.classList.toggle("hidden");
-      };
-
-      [...hack[cat]]
-        .sort((a, b) => a.name.localeCompare(b.name))
-        .forEach((cheat, index, array) => {
-          const cheatContainer = document.createElement("div");
-          cheatContainer.className = index === array.length - 1 ? "cheat-container last" : "cheat-container";
-
-          const row = document.createElement("div");
-          row.className = "list-row cheat";
-
-          const cheatName = document.createElement("span");
-          cheatName.className = "cheat-name";
-          cheatName.textContent = cheat.name;
-          row.appendChild(cheatName);
-
-          let arrow: HTMLSpanElement | undefined;
-          let config: HTMLDivElement | undefined;
-          let description: HTMLDivElement | undefined;
-
-
-          if (cheat.config && cheat.config.length > 0) {
-            arrow = document.createElement("span");
-            arrow.textContent = "▼";
-            arrow.className = "arrow";
-            row.appendChild(arrow);
-
-            config = document.createElement("div");
-            config.className = "config hidden";
-
-            cheat.config.forEach(cfg => {
-              const configItem = createConfigElement(cfg, cheat);
-              config!.appendChild(configItem);
-            });
-
-            arrow.onclick = e => {
-              e.stopPropagation();
-              config!.classList.toggle("hidden");
-              arrow!.classList.toggle("expanded");
-            };
-          }
-
-          let tooltipTimeout: ReturnType<typeof setTimeout> | null = null;
-          let tooltip: HTMLDivElement | null = null;
-
-          const showTooltip = () => {
-            tooltip = document.createElement("div");
-            tooltip.className = "cheat-tooltip";
-            tooltip.textContent = cheat.description;
-            row.appendChild(tooltip);
-          };
-
-          const hideTooltip = () => {
-            if (tooltip) {
-              tooltip.remove();
-              tooltip = null;
-            }
-          };
-
-          row.addEventListener("mouseenter", () => {
-            tooltipTimeout = setTimeout(showTooltip, 200);
-          });
-
-          row.addEventListener("mouseleave", () => {
-            if (tooltipTimeout) clearTimeout(tooltipTimeout);
-            hideTooltip();
-          });
-
-          row.onclick = () => {
-            row.classList.toggle("active");
-            cheat.enabled = row.classList.contains("active");
-            console.log(`Cheat "${cheat.name}" is now ${cheat.enabled ? "enabled" : "disabled"}.`);
-            saveSettings();
-          };
-
-          if (cheat.enabled) {
-            row.classList.add("active");
-          }
-
-          cheatContainer.appendChild(row);
-          if (config) cheatContainer.appendChild(config);
-          content.appendChild(cheatContainer);
-        });
-
-      list.appendChild(catRow);
-      list.appendChild(content);
-    });
-}
-
-function createConfigElement(config: ConfigOption, cheat: Cheat): HTMLElement {
+function createConfigElement(pane: Pane, config: ConfigOption): HTMLElement {
   const wrapper = document.createElement("div");
   wrapper.className = "config-item";
-
   const label = document.createElement("label");
   label.textContent = config.label;
-
-  const currentValue = config.value;
+  const save = () => persist(pane);
 
   switch (config.type) {
-    case "input":
+    case "input": {
       const input = document.createElement("input");
-      input.type = "text";
-      input.value = (currentValue as string) || "";
+      input.type = config.label === "Password" ? "password" : "text";
+      input.value = (config.value as string) || "";
       input.oninput = () => {
         config.value = input.value;
-        saveSettings();
+        save();
       };
       label.appendChild(input);
       break;
-
-    case "slider":
+    }
+    case "slider": {
       const slider = document.createElement("input");
       slider.type = "range";
       slider.min = (config.min ?? 0).toString();
       slider.max = (config.max ?? 100).toString();
       slider.step = (config.step ?? 1).toString();
-      slider.value = (currentValue as string) || ((config.min ?? 0) + Math.floor(((config.max ?? 100) - (config.min ?? 0)) / 2)).toString();
+      slider.value = String(config.value ?? config.min ?? 0);
 
-      // allow manual numeric input alongside the slider
-      const numberInput = document.createElement("input");
-      numberInput.type = "number";
-      numberInput.min = slider.min;
-      numberInput.max = slider.max;
-      numberInput.step = slider.step;
-      numberInput.value = slider.value;
-      numberInput.style.width = "56px";
+      const number = document.createElement("input");
+      number.type = "number";
+      number.min = slider.min;
+      number.max = slider.max;
+      number.step = slider.step;
+      number.value = slider.value;
 
-      // update display when slider moves
       slider.oninput = () => {
-        numberInput.value = slider.value;
+        number.value = slider.value;
         config.value = Number(slider.value);
-        saveSettings();
+        save();
       };
-
-      // when user manually edits the number, normalize to bounds and update slider
-      numberInput.onchange = () => {
-        let v = Number(numberInput.value);
-        const min = Number(slider.min || "0");
-        const max = Number(slider.max || "100");
+      number.onchange = () => {
+        let v = Number(number.value);
+        const min = Number(slider.min), max = Number(slider.max);
         if (isNaN(v)) v = min;
-        if (v < min) v = min;
-        if (v > max) v = max;
-        // align to step
-        const step = Number(slider.step || "1");
-        if (step > 0) {
-          v = Math.round(v / step) * step;
-          // clamp again after rounding
-          if (v < min) v = min;
-          if (v > max) v = max;
-        }
-        numberInput.value = String(v);
-        slider.value = String(v);
+        v = Math.min(max, Math.max(min, v));
+        number.value = slider.value = String(v);
         config.value = v;
-        saveSettings();
+        save();
       };
-
-      label.appendChild(slider);
-      label.appendChild(numberInput);
+      label.append(slider, number);
       break;
-
-    case "checker":
-      const checkbox = document.createElement("input");
-      checkbox.type = "checkbox";
-      checkbox.checked = (currentValue as boolean) || false;
-      checkbox.onchange = () => {
-        config.value = checkbox.checked;
-        saveSettings();
-      }
-      label.appendChild(checkbox);
-      break;
-
-    case "radio":
-      const radioGroup = document.createElement("div");
-      radioGroup.className = "radio-group";
-      (config.options || []).forEach(option => {
-        const radioWrapper = document.createElement("label");
-        radioWrapper.className = "radio-label";
+    }
+    case "checker": {
+      const line = document.createElement("div");
+      line.className = "switchline";
+      const text = document.createElement("span");
+      text.textContent = config.label;
+      const toggle = document.createElement("button");
+      toggle.type = "button";
+      toggle.className = "config-switch";
+      toggle.setAttribute("role", "switch");
+      toggle.setAttribute("aria-label", config.label);
+      const on = Boolean(config.value);
+      toggle.classList.toggle("on", on);
+      toggle.setAttribute("aria-checked", String(on));
+      toggle.addEventListener("click", () => {
+        const next = !Boolean(config.value);
+        config.value = next;
+        toggle.classList.toggle("on", next);
+        toggle.setAttribute("aria-checked", String(next));
+        save();
+      });
+      line.append(text, toggle);
+      wrapper.appendChild(line);
+      return wrapper;
+    }
+    case "radio": {
+      const group = document.createElement("div");
+      group.className = "radio-group";
+      (config.options || []).forEach((option) => {
+        const radioLabel = document.createElement("label");
+        radioLabel.className = "radio-label";
         const radio = document.createElement("input");
         radio.type = "radio";
-        radio.name = config.label;
+        radio.name = config.label + "-" + pane.id;
         radio.value = option;
-        radio.checked = option === currentValue;
+        radio.checked = option === config.value;
         radio.onchange = () => {
           config.value = option;
-          saveSettings();
+          save();
         };
-        radioWrapper.appendChild(radio);
-        radioWrapper.appendChild(document.createTextNode(option));
-        radioGroup.appendChild(radioWrapper);
+        radioLabel.append(radio, document.createTextNode(option));
+        group.appendChild(radioLabel);
       });
-      label.appendChild(radioGroup);
+      label.appendChild(group);
       break;
-
-    case "label":
+    }
+    case "label": {
       const span = document.createElement("span");
-      span.textContent = (currentValue as string) || "";
+      span.textContent = (config.value as string) || "";
       label.appendChild(span);
       break;
+    }
   }
 
   wrapper.appendChild(label);
-  postRenderConfig(wrapper, config, cheat);
   return wrapper;
 }
 
-function postRenderConfig(element: HTMLElement, config: ConfigOption, cheat: Cheat): void {
-  if (config.type === "input" && config.label === "Password") {
-    const input = element.querySelector("input") as HTMLInputElement;
-    input.type = "password";
-
-  }
-}
-
-
-function renderSearch(query: string): void {
-  if (!list) {
-    throw new Error("Cheat list element not found");
-  }
-  list.innerHTML = "";
-
-  const cheats: Array<{ cat: string; cheat: Cheat }> = [];
-  for (const cat in hack) {
-    for (const cheat of hack[cat]) {
-      if (fuzzyMatch(cheat.name, query) || fuzzyMatch(cheat.description, query)) {
-        cheats.push({ cat, cheat });
-      }
-    }
+function render(pane: Pane): void {
+  const root = list();
+  root.innerHTML = "";
+  updateCategoryFilter(pane);
+  const found = filterCheats(pane.cheats, filters);
+  updateActiveCount(pane);
+  if (!found.length) {
+    const empty = document.createElement("div");
+    empty.className = "search-empty";
+    empty.textContent = "No cheats match these filters.";
+    root.appendChild(empty);
+    return;
   }
 
-  cheats.sort((a, b) => a.cheat.name.localeCompare(b.cheat.name));
-
-  for (const item of cheats) {
-    const cheatContainer = document.createElement("div");
-    cheatContainer.className = "cheat-container search-result";
-
-    const categoryLabel = document.createElement("div");
-    categoryLabel.className = "category-label";
-    categoryLabel.textContent = item.cat;
-
-    const row = document.createElement("div");
-    row.className = "list-row cheat";
-
-    const cheatName = document.createElement("span");
-    cheatName.className = "cheat-name";
-    cheatName.textContent = item.cheat.name;
-    row.appendChild(cheatName);
-
-    let arrow: HTMLSpanElement | undefined;
-    let config: HTMLDivElement | undefined;
-
-    if (item.cheat.config && item.cheat.config.length > 0) {
-      arrow = document.createElement("span");
-      arrow.textContent = "▼";
-      arrow.className = "arrow";
-      row.appendChild(arrow);
-
-      config = document.createElement("div");
-      config.className = "config hidden";
-
-      item.cheat.config.forEach(cfg => {
-        const configItem = createConfigElement(cfg, item.cheat);
-        config!.appendChild(configItem);
-      });
-
-      arrow.onclick = e => {
-        e.stopPropagation();
-        config!.classList.toggle("hidden");
-        arrow!.classList.toggle("expanded");
-      };
-    }
-
-    let tooltipTimeout: ReturnType<typeof setTimeout> | null = null;
-    let tooltip: HTMLDivElement | null = null;
-
-    const showTooltip = () => {
-      tooltip = document.createElement("div");
-      tooltip.className = "cheat-tooltip";
-      tooltip.textContent = item.cheat.description;
-      row.appendChild(tooltip);
-    };
-
-    const hideTooltip = () => {
-      if (tooltip) {
-        tooltip.remove();
-        tooltip = null;
-      }
-    };
-
-    row.addEventListener("mouseenter", () => {
-      tooltipTimeout = setTimeout(showTooltip, 1000);
-    });
-
-    row.addEventListener("mouseleave", () => {
-      if (tooltipTimeout) clearTimeout(tooltipTimeout);
-      hideTooltip();
-    });
-
-    row.onclick = () => {
-      row.classList.toggle("active");
-      item.cheat.enabled = row.classList.contains("active");
-      saveSettings();
-    };
-
-    if (item.cheat.enabled) {
-      row.classList.add("active");
-    }
-
-    cheatContainer.appendChild(categoryLabel);
-    cheatContainer.appendChild(row);
-    if (config) cheatContainer.appendChild(config);
-    list.appendChild(cheatContainer);
+  const layout = document.createElement("div");
+  layout.className = "cheat-layout";
+  const matrix = document.createElement("div");
+  matrix.className = "cheat-matrix";
+  for (const category of [...new Set(found.map((item) => item.category))]) {
+    const group = document.createElement("section");
+    group.className = "cheat-group";
+    const heading = document.createElement("h2");
+    heading.textContent = category;
+    const grid = document.createElement("div");
+    grid.className = "cheat-grid";
+    const groupCheats = found.filter((item) => item.category === category);
+    groupCheats.forEach(({ cheat }) => grid.appendChild(buildCheatCard(pane, cheat)));
+    group.append(heading, grid);
+    matrix.appendChild(group);
   }
-}
 
-search.addEventListener("input", e => {
-  const q = (e.target as HTMLInputElement).value.trim().toLowerCase();
-  if (q === "") {
-    render(hack);
+  const configured = Object.entries(pane.cheats).find(([, cheats]) =>
+    cheats.some((cheat) => cheat === configuring)
+  );
+  if (configured && configuring?.config?.length) {
+    const inspector = document.createElement("aside");
+    inspector.className = "cheat-inspector";
+    inspector.appendChild(buildConfigPanel(pane, configured[0], configuring));
+    layout.classList.add("with-inspector");
+    layout.append(matrix, inspector);
   } else {
-    renderSearch(q);
+    layout.appendChild(matrix);
   }
-});
-if (DEBUG) {
-  (window as any).hack = hack;
+  root.appendChild(layout);
 }
 
-loadSettings();
-render(hack);
-cheatsOrchestrator();
+function buildConfigPanel(pane: Pane, category: string, cheat: Cheat): HTMLElement {
+  const panel = document.createElement("section");
+  panel.className = "cheat-config-panel";
+  const header = document.createElement("div");
+  header.className = "cheat-config-header";
+  const details = document.createElement("div");
+  const eyebrow = document.createElement("div");
+  eyebrow.className = "cheat-config-eyebrow";
+  eyebrow.textContent = category + " · " + (cheat.enabled ? "Enabled" : "Disabled");
+  const title = document.createElement("h3");
+  title.textContent = cheat.name;
+  const description = document.createElement("p");
+  description.className = "cheat-config-description";
+  description.textContent = cheat.description;
+  const status = document.createElement("span");
+  status.className = "cheat-config-status";
+  status.textContent = cheat.enabled ? "ON" : "OFF";
+  status.classList.toggle("enabled", cheat.enabled);
+  details.append(eyebrow, title, description, status);
+  // const close = document.createElement("button");
+  // close.type = "button";
+  // close.className = "cheat-config-close";
+  // close.textContent = "Close";
+  // close.addEventListener("click", () => {
+  //   configuring = null;
+  //   render(pane);
+  // });
+  header.append(details);//, close);
+  panel.append(header);
+  cheat.config?.forEach((config) => {
+    const section = document.createElement("section");
+    section.className = "cheat-config-section";
+    section.appendChild(createConfigElement(pane, config));
+    panel.appendChild(section);
+  });
+  return panel;
+}
 
+function updateCategoryFilter(pane: Pane): void {
+  if (!categoryDropdown) return;
+  const categories = Object.keys(pane.cheats).sort();
+  if (!categories.includes(filters.category)) filters.category = "";
+  categoryDropdown.setOptions(
+    [{ value: "", text: "All categories" }, ...categories.map((category) => ({ value: category, text: category }))],
+    filters.category
+  );
+}
 
+export function setupCheatDrawer(): void {
+  setupDrawerResize();
+  const search = document.getElementById("search") as HTMLInputElement;
+  search.addEventListener("input", () => {
+    const pane = getFocusedPane();
+    if (!pane) return;
+    filters.query = search.value;
+    render(pane);
+  });
+  categoryDropdown = new CustomDropdown(
+    document.getElementById("cheat-category-filter") as HTMLButtonElement,
+    document.getElementById("cheat-category-menu") as HTMLElement
+  );
+  categoryDropdown.onSelect((value) => {
+    filters.category = value;
+    const pane = getFocusedPane();
+    if (pane) render(pane);
+  });
+
+  const statusDropdown = new CustomDropdown(
+    document.getElementById("cheat-status-filter") as HTMLButtonElement,
+    document.getElementById("cheat-status-menu") as HTMLElement
+  );
+  statusDropdown.onSelect((value) => {
+    filters.status = value as CheatFilters["status"];
+    const pane = getFocusedPane();
+    if (!pane) return;
+    render(pane);
+  });
+  statusDropdown.setOptions(
+    [
+      { value: "all", text: "All states" },
+      { value: "enabled", text: "Enabled" },
+      { value: "disabled", text: "Disabled" },
+    ],
+    filters.status
+  );
+
+  onChromeChange(() => {
+    const pane = getFocusedPane();
+    if (!pane || pane === renderedPane) return;
+    renderedPane = pane;
+    configuring = null;
+    render(pane);
+  });
+}
+
+function setupDrawerResize(): void {
+  const drawer = document.getElementById("cheats-drawer");
+  const handle = document.getElementById("cheats-drawer-resize");
+  if (!drawer || !handle) return;
+
+  const clamp = (width: number) => Math.min(MAX_DRAWER_WIDTH, Math.max(MIN_DRAWER_WIDTH, width));
+  const applyWidth = (width: number) => {
+    const value = clamp(width);
+    drawer.style.setProperty("--cheat-drawer-width", `${value}px`);
+    sessionStorage.setItem(DRAWER_WIDTH_KEY, String(value));
+  };
+  const saved = Number(sessionStorage.getItem(DRAWER_WIDTH_KEY));
+  applyWidth(Number.isFinite(saved) && saved > 0 ? saved : 430);
+
+  handle.addEventListener("pointerdown", (event) => {
+    event.preventDefault();
+    handle.setPointerCapture(event.pointerId);
+    drawer.classList.add("resizing");
+    const move = (moveEvent: PointerEvent) => applyWidth(window.innerWidth - moveEvent.clientX);
+    const stop = () => {
+      drawer.classList.remove("resizing");
+      handle.removeEventListener("pointermove", move);
+      handle.removeEventListener("pointerup", stop);
+      handle.removeEventListener("pointercancel", stop);
+    };
+    handle.addEventListener("pointermove", move);
+    handle.addEventListener("pointerup", stop);
+    handle.addEventListener("pointercancel", stop);
+  });
+  handle.addEventListener("keydown", (event) => {
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    event.preventDefault();
+    const current = drawer.getBoundingClientRect().width;
+    applyWidth(current + (event.key === "ArrowLeft" ? 24 : -24));
+  });
+}
