@@ -7,15 +7,16 @@ on:
       - release
       - main
 
-concurrency:
-  group: publish-${{ github.ref }}
-  cancel-in-progress: false
+permissions:
+  contents: write
 
 jobs:
-  publish-tauri:
-    permissions:
-      contents: write
-
+  # ------------------------------------------------------------
+  # Linux
+  # Builds the ELF on Ubuntu 22.04 for broader glibc compatibility.
+  # Also publishes Tauri's normal Linux bundles.
+  # ------------------------------------------------------------
+  publish-linux:
     if: >
       github.event_name == 'workflow_dispatch' ||
       github.ref == 'refs/heads/release' ||
@@ -24,29 +25,21 @@ jobs:
         contains(github.event.head_commit.message, 'Test build')
       )
 
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - platform: ubuntu-22.04
-            args: ''
-
-          - platform: windows-latest
-            args: ''
-
-    runs-on: ${{ matrix.platform }}
+    runs-on: ubuntu-22.04
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v7
+      - uses: actions/checkout@v4
 
-      - name: Setup pnpm + Node
-        uses: pnpm/setup@v1
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
-          version: 11
-          runtime: node@24
-          cache: true
-          install: false
+          node-version: 22
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+          run_install: false
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -54,41 +47,102 @@ jobs:
       - name: Cache Rust
         uses: swatinem/rust-cache@v2
         with:
-          workspaces: ./src-tauri -> target
+          workspaces: src-tauri -> target
 
-      - name: Install Tauri dependencies
-        if: matrix.platform == 'ubuntu-22.04'
+      - name: Install Linux dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
             libwebkit2gtk-4.1-dev \
             libappindicator3-dev \
             librsvg2-dev \
-            patchelf \
-            xdg-utils
+            patchelf
 
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build and publish Tauri
+      - name: Build and publish Linux bundles
         uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: app-v__VERSION__
           releaseName: Killdozer v__VERSION__
-          releaseBody: CHANGE THIS
+          releaseBody: Macfags can cry because LinuxGQDs and WindowsChads get the Dozerpill.
           releaseDraft: false
           prerelease: false
-          args: ${{ matrix.args }}
 
+      # Save the already-built ELF for makepkg.
+      # This is an Actions artifact, NOT a GitHub Release asset.
+      - name: Upload Linux ELF for Arch packaging
+        uses: actions/upload-artifact@v4
+        with:
+          name: killdozer-linux-elf
+          path: src-tauri/target/release/killdozer
+          if-no-files-found: error
+          retention-days: 1
+
+  # ------------------------------------------------------------
+  # Windows
+  # Runs in parallel with Linux.
+  # ------------------------------------------------------------
+  # publish-windows:
+  #   if: >
+  #     github.event_name == 'workflow_dispatch' ||
+  #     github.ref == 'refs/heads/release' ||
+  #     (
+  #       github.ref == 'refs/heads/main' &&
+  #       contains(github.event.head_commit.message, 'Test build')
+  #     )
+
+  #   runs-on: windows-latest
+
+  #   steps:
+  #     - uses: actions/checkout@v4
+
+  #     - name: Setup Node
+  #       uses: actions/setup-node@v4
+  #       with:
+  #         node-version: 22
+
+  #     - name: Setup pnpm
+  #       uses: pnpm/action-setup@v4
+  #       with:
+  #         version: 10
+  #         run_install: false
+
+  #     - name: Install Rust
+  #       uses: dtolnay/rust-toolchain@stable
+
+  #     - name: Cache Rust
+  #       uses: swatinem/rust-cache@v2
+  #       with:
+  #         workspaces: src-tauri -> target
+
+  #     - name: Install frontend dependencies
+  #       run: pnpm install --frozen-lockfile
+
+  #     - name: Build and publish Windows bundles
+  #       uses: tauri-apps/tauri-action@v1
+  #       env:
+  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #       with:
+  #         tagName: app-v__VERSION__
+  #         releaseName: Killdozer v__VERSION__
+  #         releaseBody: Macfags can cry because LinuxGQDs and WindowsChads get the Dozerpill.
+  #         releaseDraft: false
+  #         prerelease: false
+
+  # ------------------------------------------------------------
+  # Arch
+  # Does NOT rebuild Tauri.
+  # Only downloads Ubuntu-built ELF and runs makepkg.
+  # ------------------------------------------------------------
   publish-arch:
     name: Arch Linux package
 
-    needs: publish-tauri
-
-    permissions:
-      contents: write
+    needs:
+      - publish-linux
 
     runs-on: ubuntu-latest
 
@@ -96,73 +150,48 @@ jobs:
       image: archlinux:latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v7
+      - uses: actions/checkout@v4
 
-      - name: Install Arch build dependencies
+      - name: Install Arch packaging tools
         run: |
           pacman -Syu --noconfirm
-
           pacman -S --needed --noconfirm \
+            git \
             base-devel \
             nodejs \
-            pnpm \
-            rust \
-            webkit2gtk-4.1 \
-            openssl \
-            appmenu-gtk-module \
-            libappindicator-gtk3 \
-            librsvg \
-            xdotool \
             github-cli
 
-      - name: Create build user
+      - name: Download Linux ELF
+        uses: actions/download-artifact@v4
+        with:
+          name: killdozer-linux-elf
+          path: packaging/arch
+
+      - name: Prepare package
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+
+          sed -i \
+            "s/^pkgver=.*/pkgver=$VERSION/" \
+            packaging/arch/PKGBUILD
+
+          cp \
+            src-tauri/icons/128x128.png \
+            packaging/arch/killdozer.png
+
+          chmod +x packaging/arch/killdozer
+
+      - name: Build Arch package
         run: |
           useradd -m builder
           chown -R builder:builder "$GITHUB_WORKSPACE"
 
-      - name: Install frontend dependencies
-        run: |
-          runuser -u builder -- bash -lc "
-            cd '$GITHUB_WORKSPACE'
-            pnpm install --frozen-lockfile
-          "
-
-      - name: Build Tauri binary
-        run: |
-          runuser -u builder -- bash -lc "
-            cd '$GITHUB_WORKSPACE'
-            pnpm tauri build --no-bundle
-          "
-
-      - name: Prepare Arch package
-        run: |
-          runuser -u builder -- bash -lc "
-            cd '$GITHUB_WORKSPACE'
-
-            VERSION=\$(node -p \"require('./package.json').version\")
-
-            sed -i \
-              \"s/^pkgver=.*/pkgver=\$VERSION/\" \
-              packaging/arch/PKGBUILD
-
-            cp \
-              src-tauri/target/release/killdozer \
-              packaging/arch/killdozer
-
-            cp \
-              src-tauri/icons/128x128.png \
-              packaging/arch/killdozer.png
-          "
-
-      - name: Build Arch package
-        run: |
           runuser -u builder -- bash -lc "
             cd '$GITHUB_WORKSPACE/packaging/arch'
             makepkg --noconfirm --force
           "
 
-      - name: Upload Arch package to release
+      - name: Upload Arch package to GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
