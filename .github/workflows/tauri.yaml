@@ -131,7 +131,7 @@ jobs:
 
           PACKAGE="$(find packaging/arch \
             -maxdepth 1 \
-            -name '*.pkg.tar.zst' \
+            -name 'killdozer-[0-9]*.pkg.tar.zst' \
             -print \
             -quit)"
 
@@ -152,7 +152,7 @@ jobs:
 
           gh release upload \
             "app-v${VERSION}" \
-            packaging/arch/*.pkg.tar.zst \
+            packaging/arch/killdozer-[0-9]*.pkg.tar.zst \
             --clobber \
             --repo "$GITHUB_REPOSITORY"
 
