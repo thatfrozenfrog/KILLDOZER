@@ -79,63 +79,82 @@ jobs:
           releaseDraft: false
           prerelease: false
 
-      # ----------------------------------------------------------
-      # Build an Actions artifact containing everything makepkg
-      # needs, while preserving the same directory structure that
-      # your current PKGBUILD expects.
-      # ----------------------------------------------------------
-      - name: Prepare Arch packaging payload
+      - name: Prepare Arch package
         shell: bash
         run: |
           set -euo pipefail
 
           VERSION="$(node -p "require('./package.json').version")"
-          PKGVER="${VERSION//-/_}"
-
-          echo "Application version: $VERSION"
-          echo "Arch pkgver:        $PKGVER"
-
-          test -s src-tauri/target/release/killdozer
-          test -f src-tauri/icons/128x128.png
-          test -f packaging/arch/PKGBUILD
-          test -f packaging/arch/killdozer.desktop
-
-          mkdir -p \
-            arch-payload/src-tauri/target/release \
-            arch-payload/src-tauri/icons \
-            arch-payload/packaging/arch
-
-          cp \
-            src-tauri/target/release/killdozer \
-            arch-payload/src-tauri/target/release/killdozer
-
-          cp \
-            src-tauri/icons/128x128.png \
-            arch-payload/src-tauri/icons/128x128.png
-
-          cp \
-            packaging/arch/killdozer.desktop \
-            arch-payload/packaging/arch/killdozer.desktop
-
-          cp \
-            packaging/arch/PKGBUILD \
-            arch-payload/packaging/arch/PKGBUILD
-
-          # Keep PKGBUILD version synchronized with package.json.
           sed -i \
-            "s/^pkgver=.*/pkgver=${PKGVER}/" \
-            arch-payload/packaging/arch/PKGBUILD
+            "s/^pkgver=.*/pkgver=${VERSION//-/_}/" \
+            packaging/arch/PKGBUILD
 
-          # Keep the original semver for the GitHub release tag.
-          printf '%s\n' "$VERSION" > arch-payload/version.txt
+          cp src-tauri/target/release/killdozer packaging/arch/killdozer
+          cp src-tauri/icons/128x128.png packaging/arch/killdozer.png
+          chmod +x packaging/arch/killdozer
 
-      - name: Upload Arch packaging payload
-        uses: actions/upload-artifact@v7
-        with:
-          name: killdozer-arch-payload
-          path: arch-payload/
-          if-no-files-found: error
-          retention-days: 1
+          test -x packaging/arch/killdozer
+          test -f packaging/arch/killdozer.desktop
+          test -f packaging/arch/killdozer.png
+          test -f packaging/arch/PKGBUILD
+
+      - name: Build Arch package
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE/packaging/arch:/build" \
+            archlinux:latest \
+            bash -euxo pipefail -c '
+              pacman -Syu --noconfirm
+              pacman -S --needed --noconfirm base-devel
+
+              if ! id builder >/dev/null 2>&1; then
+                useradd --create-home builder
+              fi
+
+              chown -R builder:builder /build
+
+              runuser -u builder -- bash -c "
+                cd /build
+                makepkg --noconfirm --force --nodeps
+              "
+            '
+
+      - name: Verify Arch package
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          ls -lh packaging/arch/*.pkg.tar.zst
+
+          PACKAGE="$(find packaging/arch \
+            -maxdepth 1 \
+            -name '*.pkg.tar.zst' \
+            -print \
+            -quit)"
+
+          test -n "$PACKAGE"
+
+          tar -tf "$PACKAGE" | grep -F 'usr/bin/killdozer'
+          tar -tf "$PACKAGE" | grep -F 'usr/share/applications/killdozer.desktop'
+          tar -tf "$PACKAGE" | grep -F 'usr/share/icons/hicolor/128x128/apps/killdozer.png'
+
+      - name: Upload Arch package
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          VERSION="$(node -p "require('./package.json').version")"
+
+          gh release upload \
+            "app-v${VERSION}" \
+            packaging/arch/*.pkg.tar.zst \
+            --clobber \
+            --repo "$GITHUB_REPOSITORY"
 
 
   # ============================================================
@@ -192,132 +211,3 @@ jobs:
           releaseBody: See the assets below to download this version.
           releaseDraft: false
           prerelease: false
-
-
-  # ============================================================
-  # Arch Linux
-  #
-  # DOES NOT:
-  #   - checkout git
-  #   - install Node
-  #   - install pnpm
-  #   - install Rust
-  #   - compile Tauri
-  #
-  # It only packages the Ubuntu-built ELF.
-  # ============================================================
-  publish-arch:
-    name: Arch Linux package
-
-    needs:
-      - publish-linux
-
-    permissions:
-      contents: write
-
-    runs-on: ubuntu-latest
-
-    container:
-      image: archlinux:latest
-
-    steps:
-      - name: Update Arch container
-        run: pacman -Syu --noconfirm
-
-      - name: Install packaging tools
-        run: |
-          pacman -S --needed --noconfirm \
-            base-devel \
-            github-cli
-
-      - name: Download Ubuntu-built payload
-        uses: actions/download-artifact@v8
-        with:
-          name: killdozer-arch-payload
-          path: .
-
-      - name: Validate payload
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          test -s src-tauri/target/release/killdozer
-          test -f src-tauri/icons/128x128.png
-          test -f packaging/arch/PKGBUILD
-          test -f packaging/arch/killdozer.desktop
-          test -s version.txt
-
-          chmod +x src-tauri/target/release/killdozer
-
-          echo "Release version: $(cat version.txt)"
-          echo
-          echo "PKGBUILD:"
-          grep -E '^(pkgname|pkgver|pkgrel|arch)=' \
-            packaging/arch/PKGBUILD
-
-      - name: Create makepkg user
-        run: |
-          useradd --create-home builder
-
-          chown -R \
-            builder:builder \
-            "$GITHUB_WORKSPACE/packaging/arch"
-
-      - name: Build Arch package
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          runuser -u builder -- bash -lc "
-            set -euo pipefail
-            cd '$GITHUB_WORKSPACE/packaging/arch'
-
-            makepkg \
-              --noconfirm \
-              --force \
-              --nodeps
-          "
-
-      - name: Verify Arch package
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          shopt -s nullglob
-          packages=(packaging/arch/*.pkg.tar.zst)
-
-          if (( ${#packages[@]} == 0 )); then
-            echo "::error::makepkg did not produce a .pkg.tar.zst"
-            exit 1
-          fi
-
-          printf 'Produced package(s):\n'
-          printf '  %s\n' "${packages[@]}"
-
-          # Verify the important installed files exist in the package.
-          bsdtar -tf "${packages[0]}" \
-            | grep -q 'usr/bin/killdozer'
-
-          bsdtar -tf "${packages[0]}" \
-            | grep -q 'usr/share/applications/killdozer.desktop'
-
-          bsdtar -tf "${packages[0]}" \
-            | grep -q 'usr/share/icons/hicolor/128x128/apps/killdozer.png'
-
-      - name: Upload Arch package to GitHub Release
-        shell: bash
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-
-          VERSION="$(cat version.txt)"
-
-          shopt -s nullglob
-          packages=(packaging/arch/*.pkg.tar.zst)
-
-          gh release upload \
-            "app-v${VERSION}" \
-            "${packages[@]}" \
-            --clobber \
-            --repo "$GITHUB_REPOSITORY"
