@@ -7,16 +7,21 @@ on:
       - release
       - main
 
-permissions:
-  contents: write
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  # ------------------------------------------------------------
+  # ============================================================
   # Linux
-  # Builds the ELF on Ubuntu 22.04 for broader glibc compatibility.
-  # Also publishes Tauri's normal Linux bundles.
-  # ------------------------------------------------------------
+  #
+  # Builds on Ubuntu 22.04 for an older glibc baseline.
+  # Tauri creates the normal Linux bundles (.deb/.rpm/AppImage).
+  # The raw ELF is then passed to the Arch packaging job.
+  # ============================================================
   publish-linux:
+    name: Linux
+
     if: >
       github.event_name == 'workflow_dispatch' ||
       github.ref == 'refs/heads/release' ||
@@ -25,21 +30,22 @@ jobs:
         contains(github.event.head_commit.message, 'Test build')
       )
 
+    permissions:
+      contents: write
+
     runs-on: ubuntu-22.04
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v7
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - name: Setup pnpm + Node
+        uses: pnpm/setup@v2
         with:
-          node-version: 22
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10
-          run_install: false
+          version: 11
+          runtime: node@24
+          cache: true
+          install: false
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -47,16 +53,17 @@ jobs:
       - name: Cache Rust
         uses: swatinem/rust-cache@v2
         with:
-          workspaces: src-tauri -> target
+          workspaces: ./src-tauri -> target
 
-      - name: Install Linux dependencies
+      - name: Install Tauri Linux dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
             libwebkit2gtk-4.1-dev \
             libappindicator3-dev \
             librsvg2-dev \
-            patchelf
+            patchelf \
+            xdg-utils
 
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
@@ -68,81 +75,145 @@ jobs:
         with:
           tagName: app-v__VERSION__
           releaseName: Killdozer v__VERSION__
-          releaseBody: Macfags can cry because LinuxGQDs and WindowsChads get the Dozerpill.
+          releaseBody: See the assets below to download this version.
           releaseDraft: false
           prerelease: false
 
-      # Save the already-built ELF for makepkg.
-      # This is an Actions artifact, NOT a GitHub Release asset.
-      - name: Upload Linux ELF for Arch packaging
-        uses: actions/upload-artifact@v4
+      # ----------------------------------------------------------
+      # Build an Actions artifact containing everything makepkg
+      # needs, while preserving the same directory structure that
+      # your current PKGBUILD expects.
+      # ----------------------------------------------------------
+      - name: Prepare Arch packaging payload
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          VERSION="$(node -p "require('./package.json').version")"
+          PKGVER="${VERSION//-/_}"
+
+          echo "Application version: $VERSION"
+          echo "Arch pkgver:        $PKGVER"
+
+          test -s src-tauri/target/release/killdozer
+          test -f src-tauri/icons/128x128.png
+          test -f packaging/arch/PKGBUILD
+          test -f packaging/arch/killdozer.desktop
+
+          mkdir -p \
+            arch-payload/src-tauri/target/release \
+            arch-payload/src-tauri/icons \
+            arch-payload/packaging/arch
+
+          cp \
+            src-tauri/target/release/killdozer \
+            arch-payload/src-tauri/target/release/killdozer
+
+          cp \
+            src-tauri/icons/128x128.png \
+            arch-payload/src-tauri/icons/128x128.png
+
+          cp \
+            packaging/arch/killdozer.desktop \
+            arch-payload/packaging/arch/killdozer.desktop
+
+          cp \
+            packaging/arch/PKGBUILD \
+            arch-payload/packaging/arch/PKGBUILD
+
+          # Keep PKGBUILD version synchronized with package.json.
+          sed -i \
+            "s/^pkgver=.*/pkgver=${PKGVER}/" \
+            arch-payload/packaging/arch/PKGBUILD
+
+          # Keep the original semver for the GitHub release tag.
+          printf '%s\n' "$VERSION" > arch-payload/version.txt
+
+      - name: Upload Arch packaging payload
+        uses: actions/upload-artifact@v7
         with:
-          name: killdozer-linux-elf
-          path: src-tauri/target/release/killdozer
+          name: killdozer-arch-payload
+          path: arch-payload/
           if-no-files-found: error
           retention-days: 1
 
-  # ------------------------------------------------------------
+
+  # ============================================================
   # Windows
-  # Runs in parallel with Linux.
-  # ------------------------------------------------------------
-  # publish-windows:
-  #   if: >
-  #     github.event_name == 'workflow_dispatch' ||
-  #     github.ref == 'refs/heads/release' ||
-  #     (
-  #       github.ref == 'refs/heads/main' &&
-  #       contains(github.event.head_commit.message, 'Test build')
-  #     )
+  #
+  # Runs independently/in parallel with Linux.
+  # ============================================================
+  publish-windows:
+    name: Windows
 
-  #   runs-on: windows-latest
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      github.ref == 'refs/heads/release' ||
+      (
+        github.ref == 'refs/heads/main' &&
+        contains(github.event.head_commit.message, 'Test build')
+      )
 
-  #   steps:
-  #     - uses: actions/checkout@v4
+    permissions:
+      contents: write
 
-  #     - name: Setup Node
-  #       uses: actions/setup-node@v4
-  #       with:
-  #         node-version: 22
+    runs-on: windows-latest
 
-  #     - name: Setup pnpm
-  #       uses: pnpm/action-setup@v4
-  #       with:
-  #         version: 10
-  #         run_install: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
 
-  #     - name: Install Rust
-  #       uses: dtolnay/rust-toolchain@stable
+      - name: Setup pnpm + Node
+        uses: pnpm/setup@v2
+        with:
+          version: 11
+          runtime: node@24
+          cache: true
+          install: false
 
-  #     - name: Cache Rust
-  #       uses: swatinem/rust-cache@v2
-  #       with:
-  #         workspaces: src-tauri -> target
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
 
-  #     - name: Install frontend dependencies
-  #       run: pnpm install --frozen-lockfile
+      - name: Cache Rust
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: ./src-tauri -> target
 
-  #     - name: Build and publish Windows bundles
-  #       uses: tauri-apps/tauri-action@v1
-  #       env:
-  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  #       with:
-  #         tagName: app-v__VERSION__
-  #         releaseName: Killdozer v__VERSION__
-  #         releaseBody: Macfags can cry because LinuxGQDs and WindowsChads get the Dozerpill.
-  #         releaseDraft: false
-  #         prerelease: false
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
 
-  # ------------------------------------------------------------
-  # Arch
-  # Does NOT rebuild Tauri.
-  # Only downloads Ubuntu-built ELF and runs makepkg.
-  # ------------------------------------------------------------
+      - name: Build and publish Windows bundles
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: app-v__VERSION__
+          releaseName: Killdozer v__VERSION__
+          releaseBody: See the assets below to download this version.
+          releaseDraft: false
+          prerelease: false
+
+
+  # ============================================================
+  # Arch Linux
+  #
+  # DOES NOT:
+  #   - checkout git
+  #   - install Node
+  #   - install pnpm
+  #   - install Rust
+  #   - compile Tauri
+  #
+  # It only packages the Ubuntu-built ELF.
+  # ============================================================
   publish-arch:
     name: Arch Linux package
 
     needs:
       - publish-linux
+
+    permissions:
+      contents: write
 
     runs-on: ubuntu-latest
 
@@ -150,54 +221,103 @@ jobs:
       image: archlinux:latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Update Arch container
+        run: pacman -Syu --noconfirm
 
-      - name: Install Arch packaging tools
+      - name: Install packaging tools
         run: |
-          pacman -Syu --noconfirm
           pacman -S --needed --noconfirm \
-            git \
             base-devel \
-            nodejs \
             github-cli
 
-      - name: Download Linux ELF
-        uses: actions/download-artifact@v4
+      - name: Download Ubuntu-built payload
+        uses: actions/download-artifact@v8
         with:
-          name: killdozer-linux-elf
-          path: packaging/arch
+          name: killdozer-arch-payload
+          path: .
 
-      - name: Prepare package
+      - name: Validate payload
+        shell: bash
         run: |
-          VERSION="$(node -p "require('./package.json').version")"
+          set -euo pipefail
 
-          sed -i \
-            "s/^pkgver=.*/pkgver=$VERSION/" \
+          test -s src-tauri/target/release/killdozer
+          test -f src-tauri/icons/128x128.png
+          test -f packaging/arch/PKGBUILD
+          test -f packaging/arch/killdozer.desktop
+          test -s version.txt
+
+          chmod +x src-tauri/target/release/killdozer
+
+          echo "Release version: $(cat version.txt)"
+          echo
+          echo "PKGBUILD:"
+          grep -E '^(pkgname|pkgver|pkgrel|arch)=' \
             packaging/arch/PKGBUILD
 
-          cp \
-            src-tauri/icons/128x128.png \
-            packaging/arch/killdozer.png
+      - name: Create makepkg user
+        run: |
+          useradd --create-home builder
 
-          chmod +x packaging/arch/killdozer
+          chown -R \
+            builder:builder \
+            "$GITHUB_WORKSPACE/packaging/arch"
 
       - name: Build Arch package
+        shell: bash
         run: |
-          useradd -m builder
-          chown -R builder:builder "$GITHUB_WORKSPACE"
+          set -euo pipefail
 
           runuser -u builder -- bash -lc "
+            set -euo pipefail
             cd '$GITHUB_WORKSPACE/packaging/arch'
-            makepkg --noconfirm --force
+
+            makepkg \
+              --noconfirm \
+              --force \
+              --nodeps
           "
 
-      - name: Upload Arch package to GitHub release
+      - name: Verify Arch package
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          shopt -s nullglob
+          packages=(packaging/arch/*.pkg.tar.zst)
+
+          if (( ${#packages[@]} == 0 )); then
+            echo "::error::makepkg did not produce a .pkg.tar.zst"
+            exit 1
+          fi
+
+          printf 'Produced package(s):\n'
+          printf '  %s\n' "${packages[@]}"
+
+          # Verify the important installed files exist in the package.
+          bsdtar -tf "${packages[0]}" \
+            | grep -q 'usr/bin/killdozer'
+
+          bsdtar -tf "${packages[0]}" \
+            | grep -q 'usr/share/applications/killdozer.desktop'
+
+          bsdtar -tf "${packages[0]}" \
+            | grep -q 'usr/share/icons/hicolor/128x128/apps/killdozer.png'
+
+      - name: Upload Arch package to GitHub Release
+        shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          VERSION="$(node -p "require('./package.json').version")"
+          set -euo pipefail
+
+          VERSION="$(cat version.txt)"
+
+          shopt -s nullglob
+          packages=(packaging/arch/*.pkg.tar.zst)
 
           gh release upload \
             "app-v${VERSION}" \
-            packaging/arch/*.pkg.tar.zst \
-            --clobber
+            "${packages[@]}" \
+            --clobber \
+            --repo "$GITHUB_REPOSITORY"

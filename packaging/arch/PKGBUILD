@@ -10,16 +10,25 @@ depends=(
   'gtk3'
 )
 
+source=(
+  'killdozer'
+  'killdozer.desktop'
+  'killdozer.png'
+)
+
+sha256sums=(
+  'SKIP'
+  'SKIP'
+  'SKIP'
+)
+
 package() {
-  install -Dm755 \
-    "$srcdir/../../../src-tauri/target/release/killdozer" \
+  install -Dm755 "$srcdir/killdozer" \
     "$pkgdir/usr/bin/killdozer"
 
-  install -Dm644 \
-    "$srcdir/../killdozer.desktop" \
+  install -Dm644 "$srcdir/killdozer.desktop" \
     "$pkgdir/usr/share/applications/killdozer.desktop"
 
-  install -Dm644 \
-    "$srcdir/../../../src-tauri/icons/128x128.png" \
+  install -Dm644 "$srcdir/killdozer.png" \
     "$pkgdir/usr/share/icons/hicolor/128x128/apps/killdozer.png"
 }
