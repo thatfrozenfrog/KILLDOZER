@@ -1,0 +1,70 @@
+/* --- Workspace / split tree --------------------------------------------- */
+
+body {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-app);
+}
+
+#workspace {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  background: var(--bg-app);
+  isolation: isolate;
+}
+
+.tab-page {
+  display: none;
+  position: absolute;
+  inset: 0;
+}
+
+.tab-page.active {
+  display: flex;
+}
+
+.tab-page.active > .pane,
+.tab-page.active > .split {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+}
+
+.split {
+  display: flex;
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+}
+
+.split.row {
+  flex-direction: row;
+}
+
+.split.col {
+  flex-direction: column;
+}
+
+.divider {
+  flex: none;
+  background: var(--border-hairline);
+  transition: background 120ms ease;
+  z-index: 2;
+}
+
+.divider.row {
+  width: 4px;
+  cursor: col-resize;
+}
+
+.divider.col {
+  height: 4px;
+  cursor: row-resize;
+}
+
+.divider:hover,
+.divider.dragging {
+  background: var(--interactive-accent);
+}
+

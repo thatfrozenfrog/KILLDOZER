@@ -28,3 +28,4 @@ dist-ssr
 docs/
 .vscode/
 tests/
+.gstack/

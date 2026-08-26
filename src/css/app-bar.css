@@ -1,0 +1,110 @@
+/* --- App bar ------------------------------------------------------------ */
+
+#app-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 42px;
+  padding: 0 16px;
+  background: var(--bg-chrome);
+  border-bottom: 1px solid var(--border-hairline);
+  flex: none;
+}
+
+#app-title {
+  color: var(--accent-brand);
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  font-size: 12px;
+  text-shadow: none;
+}
+
+.bar-btn,
+.bar-control {
+  height: 28px;
+  background: var(--bg-app);
+  color: var(--fg-secondary);
+  border: 1px solid var(--border-hairline);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 0 10px;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.bar-btn:hover,
+.bar-control:hover {
+  color: var(--fg-emphasis);
+  border-color: var(--fg-secondary);
+  background: var(--bg-raised);
+}
+
+#scheme-picker {
+  min-width: 170px;
+  max-width: 190px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--fg-default);
+}
+
+#scheme-picker::after {
+  content: "▾";
+  color: var(--accent-brand);
+  font-size: 11px;
+}
+
+.scheme-control,
+.dropdown-control {
+  position: relative;
+}
+
+.scheme-menu,
+.dropdown-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 80;
+  width: max-content;
+  min-width: 100%;
+  max-width: min(320px, calc(100vw - 24px));
+  max-height: min(65vh, 440px);
+  padding: 4px;
+  overflow-y: auto;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-strong);
+  box-shadow: 0 10px 30px var(--shadow-menu);
+}
+
+.scheme-option,
+.dropdown-option {
+  display: block;
+  width: 100%;
+  padding: 7px 9px;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  background: transparent;
+  color: var(--fg-secondary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.scheme-option:hover,
+.scheme-option:focus-visible,
+.dropdown-option:hover,
+.dropdown-option:focus-visible {
+  border-color: var(--border-strong);
+  background: var(--bg-raised);
+  color: var(--fg-emphasis);
+  outline: none;
+}
+
+.scheme-option.selected,
+.dropdown-option.selected {
+  background: color-mix(in srgb, var(--accent-selected) 12%, var(--bg-app));
+  color: var(--accent-selected);
+}
+

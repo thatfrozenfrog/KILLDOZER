@@ -1,0 +1,142 @@
+/* --- Connection form ----------------------------------------------------- */
+
+.connection-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.form-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.form-label-text {
+  color: var(--fg-secondary);
+  font-size: 11px;
+}
+
+.checkbox-label {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+.connection-form input[type="text"],
+.connection-form input[type="password"] {
+  background: var(--bg-app);
+  border: 1px solid var(--border-subtle);
+  color: var(--fg-default);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 6px 8px;
+  border-radius: 3px;
+  outline: none;
+}
+
+.connection-form input:focus {
+  border-color: var(--interactive-accent);
+}
+
+.connection-form input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  margin: 0;
+  width: 15px;
+  height: 15px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 2px;
+  background: var(--bg-app);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+
+.connection-form input[type="checkbox"]::after {
+  content: "";
+  width: 9px;
+  height: 9px;
+  transform: scale(0);
+  transition: transform 100ms ease;
+  background: var(--interactive-accent);
+  clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+}
+
+.connection-form input[type="checkbox"]:checked {
+  border-color: var(--interactive-accent);
+  background: color-mix(in srgb, var(--interactive-accent) 14%, var(--bg-app));
+}
+
+.connection-form input[type="checkbox"]:checked::after {
+  transform: scale(1);
+}
+
+.connection-form input[type="checkbox"]:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.connection-form input:disabled {
+  opacity: 0.5;
+}
+
+.proxy-auth-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-left: 10px;
+  border-left: 1px solid var(--border-subtle);
+}
+
+.plaintext-note {
+  color: var(--status-caution);
+  font-size: 10px;
+  margin: 2px 0 0;
+}
+
+#connect-btn,
+#disconnect-btn {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 7px;
+  border-radius: 3px;
+  cursor: pointer;
+  border: 1px solid var(--status-success);
+  background: transparent;
+  color: var(--status-success);
+}
+
+#connect-btn:hover:not(:disabled) {
+  background: var(--status-success);
+  color: var(--bg-app);
+}
+
+#disconnect-btn {
+  border-color: var(--status-danger);
+  color: var(--status-danger);
+}
+
+#disconnect-btn:hover:not(:disabled) {
+  background: var(--status-danger);
+  color: var(--bg-app);
+}
+
+#connect-btn:disabled,
+#disconnect-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.statusbar {
+  margin-top: 14px;
+  color: var(--fg-secondary);
+  font-size: 11px;
+}
+
+.statusbar hr {
+  border: none;
+  border-top: 1px solid var(--border-subtle);
+}
+

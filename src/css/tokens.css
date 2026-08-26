@@ -1,0 +1,76 @@
+/*
+   Tier 1 (raw palette): --base00..--base17 are set at runtime by theme.ts
+   from the active Base24 scheme; this file never defines them.
+   Tier 2 (semantic tokens): the mappings below are the ONLY variables
+   component rules may reference — never a raw slot or a hue name. */
+:root {
+  /* Surfaces */
+  --bg-app: var(--base00);
+  --bg-surface: var(--base01);
+  --bg-inset: var(--base02);
+  --bg-chrome: color-mix(in srgb, var(--base00) 88%, var(--base01));
+  --bg-raised: color-mix(in srgb, var(--base01) 78%, var(--base02));
+
+  /* Borders */
+  --border-subtle: var(--base02);
+  --border-strong: var(--base03);
+  --border-hairline: color-mix(in srgb, var(--base03) 45%, transparent);
+
+  /* Foreground */
+  --fg-muted: var(--base03);
+  --fg-secondary: var(--base04);
+  --fg-default: var(--base05);
+  --fg-emphasis: var(--base07);
+
+  /* Interactive */
+  --interactive-accent: var(--base0D); /* input focus, checkbox, radio, slider */
+  --interactive-active: var(--base0C); /* switch ON state */
+  --interactive-knob: var(--base07);
+  --focus-ring: var(--base0E);
+
+  /* Accents */
+  --accent-brand: var(--base0A);    /* app title, picker carets */
+  --accent-selected: var(--base0A); /* selected menu options */
+  --accent-heading: var(--base08);  /* drawer headings, red-team identity */
+  --accent-section: var(--base0C);  /* cheat group headings */
+  --accent-info: var(--base0D);     /* config panel eyebrow */
+  --accent-badge: var(--base0E);    /* default-tab badge */
+
+  /* Status */
+  --status-danger: var(--base08);
+  --status-caution: var(--base09);
+  --status-pending: var(--base0A);
+  --status-success: var(--base0B);
+
+  /* Shadows */
+  --shadow-menu: color-mix(in srgb, var(--base00) 72%, transparent);
+  --shadow-drawer: color-mix(in srgb, var(--base00) 70%, transparent);
+  --shadow-drawer-strong: color-mix(in srgb, var(--base00) 80%, transparent);
+
+  /* Typography */
+  --font-mono: "JetBrains Mono Variable", "JetBrains Mono", "Fira Code", monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: var(--bg-app);
+  color: var(--fg-default);
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.hidden {
+  display: none !important;
+}
+

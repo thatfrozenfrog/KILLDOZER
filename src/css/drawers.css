@@ -1,0 +1,48 @@
+/* --- Drawers ------------------------------------------------------------- */
+
+.drawer {
+  position: fixed;
+  top: 74px; /* app bar + tab bar + borders */
+  bottom: 0;
+  width: 300px;
+  z-index: 40;
+  background: var(--bg-surface);
+  border-color: var(--border-subtle);
+  border-style: solid;
+  padding: 14px;
+  overflow-y: auto;
+  transition: transform 160ms ease;
+}
+
+.drawer.left {
+  left: 0;
+  border-width: 0 1px 0 0;
+  transform: translateX(-100%);
+}
+
+.drawer.right {
+  right: 0;
+  border-width: 0 0 0 1px;
+  transform: translateX(100%);
+}
+
+.drawer.open {
+  transform: translateX(0);
+  box-shadow: 0 0 30px var(--shadow-drawer);
+}
+
+.drawer-title {
+  color: var(--accent-heading);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+.drawer-target {
+  color: var(--fg-muted);
+  font-size: 11px;
+  margin-bottom: 14px;
+}
+

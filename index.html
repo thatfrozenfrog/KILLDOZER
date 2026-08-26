@@ -72,19 +72,21 @@
 
     <aside id="cheats-drawer" class="drawer right" aria-label="Cheats">
       <div id="cheats-drawer-resize" class="cheats-drawer-resize" role="separator" aria-orientation="vertical" aria-label="Resize cheats drawer" tabindex="0" title="Drag to resize"></div>
-      <div id="cheat-header">
-        <input type="search" id="search" placeholder="Search cheats" autocomplete="off" aria-label="Search cheats" />
-        <div class="dropdown-control">
-          <button id="cheat-category-filter" class="filter-btn" type="button" aria-label="Cheat category" aria-haspopup="listbox" aria-expanded="false">All categories</button>
-          <div id="cheat-category-menu" class="dropdown-menu hidden" role="listbox" aria-label="Cheat category"></div>
+      <div class="cheats-drawer-scroll">
+        <div id="cheat-header">
+          <input type="search" id="search" placeholder="Search cheats" autocomplete="off" aria-label="Search cheats" />
+          <div class="dropdown-control">
+            <button id="cheat-category-filter" class="filter-btn" type="button" aria-label="Cheat category" aria-haspopup="listbox" aria-expanded="false">All categories</button>
+            <div id="cheat-category-menu" class="dropdown-menu hidden" role="listbox" aria-label="Cheat category"></div>
+          </div>
+          <div class="dropdown-control">
+            <button id="cheat-status-filter" class="filter-btn" type="button" aria-label="Cheat status" aria-haspopup="listbox" aria-expanded="false">All states</button>
+            <div id="cheat-status-menu" class="dropdown-menu hidden" role="listbox" aria-label="Cheat status"></div>
+          </div>
+          <span id="active-count"></span>
         </div>
-        <div class="dropdown-control">
-          <button id="cheat-status-filter" class="filter-btn" type="button" aria-label="Cheat status" aria-haspopup="listbox" aria-expanded="false">All states</button>
-          <div id="cheat-status-menu" class="dropdown-menu hidden" role="listbox" aria-label="Cheat status"></div>
-        </div>
-        <span id="active-count"></span>
+        <div id="cheat-list"></div>
       </div>
-      <div id="cheat-list"></div>
     </aside>
 
     <div id="pane-menu" class="hidden" role="menu"></div>

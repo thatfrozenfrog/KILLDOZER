@@ -1,0 +1,82 @@
+/* --- Tab bar ------------------------------------------------------------ */
+
+#tab-bar {
+  display: flex;
+  align-items: stretch;
+  gap: 1px;
+  height: 34px;
+  padding: 4px 12px 0;
+  background: var(--bg-chrome);
+  border-bottom: 1px solid var(--border-hairline);
+  overflow-x: auto;
+  flex: none;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 7px 0 10px;
+  color: var(--fg-muted);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-hairline);
+  border-bottom: none;
+  border-radius: 3px 3px 0 0;
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.tab:hover {
+  color: var(--fg-secondary);
+  background: var(--bg-raised);
+}
+
+.tab.active {
+  background: var(--bg-app);
+  color: var(--fg-emphasis);
+  border-color: var(--border-strong);
+}
+
+.tab-close {
+  background: none;
+  border: none;
+  color: var(--fg-muted);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0 2px;
+}
+
+.tab-close:hover {
+  color: var(--status-danger);
+}
+
+.tab-default-badge {
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  color: var(--accent-badge);
+  border: 1px solid var(--accent-badge);
+  border-radius: 2px;
+  padding: 1px 4px;
+  text-transform: uppercase;
+}
+
+#new-tab {
+  align-self: center;
+  background: none;
+  border: 1px solid transparent;
+  color: var(--fg-secondary);
+  border-radius: 2px;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  line-height: 1;
+  padding: 3px 8px;
+  cursor: pointer;
+}
+
+#new-tab:hover {
+  color: var(--status-success);
+  border-color: var(--status-success);
+}
+

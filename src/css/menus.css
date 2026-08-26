@@ -1,0 +1,38 @@
+/* --- Context menu -------------------------------------------------------- */
+
+#pane-menu {
+  position: fixed;
+  z-index: 60;
+  min-width: 160px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+  padding: 4px;
+}
+
+.menu-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  color: var(--fg-default);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.menu-sep {
+  height: 1px;
+  margin: 4px 0;
+  background: var(--border-subtle);
+}
+
+.menu-item:hover {
+  background: var(--bg-inset);
+  color: var(--fg-emphasis);
+}
+
