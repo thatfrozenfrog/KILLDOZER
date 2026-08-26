@@ -10,6 +10,8 @@
   --bg-inset: var(--base02);
   --bg-chrome: color-mix(in srgb, var(--base00) 88%, var(--base01));
   --bg-raised: color-mix(in srgb, var(--base01) 78%, var(--base02));
+  --bg-card: color-mix(in srgb, var(--bg-surface) 95%, var(--bg-app));
+  --bg-card-selected: color-mix(in srgb, var(--bg-surface) 95%, white);
 
   /* Borders */
   --border-subtle: var(--base02);
@@ -73,4 +75,3 @@ body {
 .hidden {
   display: none !important;
 }
-

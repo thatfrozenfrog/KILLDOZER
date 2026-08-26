@@ -1,0 +1,17 @@
+{
+  "productName": "Killdozer",
+  "identifier": "com.kiwi.killdozer",
+  "version": "1.0.0",
+  "binaries": [
+    {
+      "path": "src-tauri/target/release/killdozer",
+      "main": true
+    }
+  ],
+  "icons": [
+    "src-tauri/icons/32x32.png",
+    "src-tauri/icons/128x128.png",
+    "src-tauri/icons/icon.png"
+  ],
+  "formats": ["pacman"]
+}

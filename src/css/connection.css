@@ -25,7 +25,7 @@
 
 .connection-form input[type="text"],
 .connection-form input[type="password"] {
-  background: var(--bg-app);
+  background: var(--bg-inset);
   border: 1px solid var(--border-subtle);
   color: var(--fg-default);
   font-family: var(--font-mono);
@@ -36,7 +36,8 @@
 }
 
 .connection-form input:focus {
-  border-color: var(--interactive-accent);
+  border-color: var(--accent-info);
+  box-shadow: 0 0 0 1px var(--accent-info);
 }
 
 .connection-form input[type="checkbox"] {
@@ -47,7 +48,7 @@
   height: 15px;
   border: 1px solid var(--border-subtle);
   border-radius: 2px;
-  background: var(--bg-app);
+  background: var(--bg-inset);
   display: grid;
   place-items: center;
   cursor: pointer;
@@ -65,8 +66,8 @@
 }
 
 .connection-form input[type="checkbox"]:checked {
-  border-color: var(--interactive-accent);
-  background: color-mix(in srgb, var(--interactive-accent) 14%, var(--bg-app));
+  border-color: var(--accent-info);
+  background: color-mix(in srgb, var(--accent-info) 18%, var(--bg-surface));
 }
 
 .connection-form input[type="checkbox"]:checked::after {
@@ -87,7 +88,8 @@
   flex-direction: column;
   gap: 10px;
   padding-left: 10px;
-  border-left: 1px solid var(--border-subtle);
+  border-left: 1px solid var(--accent-info);
+  background: color-mix(in srgb, var(--accent-info) 8%, var(--bg-surface));
 }
 
 .plaintext-note {
@@ -103,19 +105,20 @@
   padding: 7px;
   border-radius: 3px;
   cursor: pointer;
-  border: 1px solid var(--status-success);
-  background: transparent;
-  color: var(--status-success);
+  border: 1px solid var(--fg-secondary);
+  background: color-mix(in srgb, var(--fg-secondary) 18%, var(--bg-surface));
+  color: var(--fg-default);
 }
 
 #connect-btn:hover:not(:disabled) {
-  background: var(--status-success);
+  background: var(--fg-secondary);
   color: var(--bg-app);
 }
 
 #disconnect-btn {
   border-color: var(--status-danger);
-  color: var(--status-danger);
+  background: color-mix(in srgb, var(--status-danger) 18%, var(--bg-surface));
+  color: var(--fg-default);
 }
 
 #disconnect-btn:hover:not(:disabled) {
@@ -139,4 +142,3 @@
   border: none;
   border-top: 1px solid var(--border-subtle);
 }
-

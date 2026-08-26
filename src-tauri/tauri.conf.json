@@ -25,6 +25,7 @@
     "withGlobalTauri": true,
     "windows": [
       {
+        "decorations": false,
         "fullscreen": false,
         "resizable": true,
         "title": "Killdozer",

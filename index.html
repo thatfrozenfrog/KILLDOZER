@@ -9,14 +9,19 @@
   </head>
   <body>
     <header id="app-bar">
-      <div id="app-title">KILLDOZER</div>
-      <span class="spacer"></span>
+      <div id="app-title" data-window-drag-region>KILLDOZER</div>
+      <span class="spacer" data-window-drag-region></span>
       <div class="scheme-control">
         <button id="scheme-picker" class="bar-control" type="button" title="Base24 color scheme" aria-label="Color scheme" aria-haspopup="listbox" aria-expanded="false"></button>
         <div id="scheme-menu" class="scheme-menu hidden" role="listbox" aria-label="Base24 color scheme"></div>
       </div>
       <button id="toggle-connection" class="bar-btn" title="Connection drawer">Connection</button>
       <button id="toggle-cheats" class="bar-btn" title="Cheats drawer">Cheats</button>
+      <div id="window-controls" aria-label="Window controls">
+        <button class="window-control" data-window-action="minimize" type="button" aria-label="Minimize" title="Minimize">−</button>
+        <button class="window-control" data-window-action="maximize" type="button" aria-label="Maximize" title="Maximize">□</button>
+        <button class="window-control close" data-window-action="close" type="button" aria-label="Close" title="Close">×</button>
+      </div>
     </header>
 
     <nav id="tab-bar" aria-label="Session tabs"></nav>
@@ -88,6 +93,17 @@
         <div id="cheat-list"></div>
       </div>
     </aside>
+
+    <div id="window-resize-handles" aria-hidden="true">
+      <div class="window-resize-handle north" data-resize-direction="North"></div>
+      <div class="window-resize-handle south" data-resize-direction="South"></div>
+      <div class="window-resize-handle east" data-resize-direction="East"></div>
+      <div class="window-resize-handle west" data-resize-direction="West"></div>
+      <div class="window-resize-handle north-west" data-resize-direction="NorthWest"></div>
+      <div class="window-resize-handle north-east" data-resize-direction="NorthEast"></div>
+      <div class="window-resize-handle south-west" data-resize-direction="SouthWest"></div>
+      <div class="window-resize-handle south-east" data-resize-direction="SouthEast"></div>
+    </div>
 
     <div id="pane-menu" class="hidden" role="menu"></div>
   </body>

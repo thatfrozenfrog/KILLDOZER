@@ -131,6 +131,7 @@
 
 #cheat-list {
   padding: 16px;
+  background: var(--bg-surface);
 }
 
 .cheat-layout {
@@ -183,7 +184,7 @@
   padding: 0;
   border: 1px solid var(--border-subtle);
   border-radius: 4px;
-  background: var(--bg-app);
+  background: var(--bg-card);
   color: var(--fg-secondary);
   text-align: left;
   display: flex;
@@ -194,28 +195,26 @@
 }
 
 .cheat-card:hover {
-  background: var(--bg-inset);
+  background: var(--bg-card-selected);
   border-color: var(--border-strong);
   transform: translateY(-1px);
 }
 
 .cheat-card.active {
   border-color: var(--status-success);
-  background: color-mix(in srgb, var(--status-success) 18%, var(--bg-surface));
+  background: var(--bg-card-selected);
   color: var(--fg-default);
 }
 
 .cheat-card.configuring,
 .cheat-card:has(.cheat-configure[aria-expanded="true"]) {
   border-color: var(--accent-info);
-  background: color-mix(in srgb, var(--accent-info) 18%, var(--bg-surface));
   box-shadow: inset 0 0 0 1px var(--accent-info);
 }
 
 .cheat-card.active.configuring,
 .cheat-card.active:has(.cheat-configure[aria-expanded="true"]) {
   border-color: var(--accent-info);
-  background: color-mix(in srgb, var(--status-success) 18%, var(--bg-surface));
   outline: 2px solid var(--accent-info);
   outline-offset: 1px;
 }
@@ -267,7 +266,7 @@
   width: 100%;
   padding: 8px 12px;
   border: 0;
-  border-top: 1px solid var(--accent-info);
+  border-top: 1px solid var(--fg-secondary);
   border-color: var(--accent-info);
 
   background: color-mix(in srgb, var(--accent-info) 8%, transparent);
@@ -339,7 +338,7 @@
   width: fit-content;
   margin-top: 8px;
   padding: 2px 6px;
-  border: 1px solid var(--fg-secondary);
+  border: 1px solid var(--status-danger);
   border-radius: 999px;
   color: var(--fg-muted);
   font-size: 9px;
@@ -348,7 +347,7 @@
 }
 
 .cheat-config-status.enabled {
-  border-color: var(--fg-secondary);
+  border-color: var(--status-success);
   color: var(--status-success);
   background: color-mix(in srgb, var(--status-success) 10%, transparent);
 }
@@ -573,7 +572,7 @@
   padding: 10px 12px;
   border: 1px solid var(--border-subtle);
   border-radius: 3px;
-  background: var(--bg-inset);
+  background: var(--bg-card);
   cursor: pointer;
   font-size: 12px;
   color: var(--fg-secondary);
@@ -585,7 +584,7 @@
 
 .radio-label:has(input:checked) {
   border-color: var(--accent-selected);
-  background: color-mix(in srgb, var(--accent-selected) 14%, var(--bg-inset));
+  background: var(--bg-card-selected);
   color: var(--fg-default);
 }
 

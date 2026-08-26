@@ -95,3 +95,6 @@
   /* padding: 5px 8px; */
 }
 
+.pane-terminal .xterm .xterm-viewport {
+  background-color: var(--base00);
+}

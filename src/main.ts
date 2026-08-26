@@ -20,6 +20,27 @@ import { loadDefaultConnection } from "./shell";
 import { defaultCheatState } from "./cheat/registry";
 import { refreshChrome } from "./chrome";
 import { DEBUG } from "./gadget";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+
+function setupWindowControls(): void {
+  const appWindow = getCurrentWindow();
+  document.querySelectorAll<HTMLButtonElement>("[data-window-action]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const action = button.dataset.windowAction;
+      const operation = action === "minimize" ? appWindow.minimize() : action === "maximize" ? appWindow.toggleMaximize() : appWindow.close();
+      void operation.catch(() => {});
+    });
+  });
+  document.querySelectorAll<HTMLElement>("[data-window-drag-region]").forEach((region) => {
+    region.addEventListener("pointerdown", () => void appWindow.startDragging().catch(() => {}));
+  });
+  document.querySelectorAll<HTMLElement>("[data-resize-direction]").forEach((handle) => {
+    handle.addEventListener("pointerdown", () => {
+      const direction = handle.dataset.resizeDirection as Parameters<typeof appWindow.startResizeDragging>[0];
+      void appWindow.startResizeDragging(direction).catch(() => {});
+    });
+  });
+}
 
 function setupSchemePicker(): void {
   const picker = document.getElementById("scheme-picker") as HTMLButtonElement;
@@ -72,6 +93,7 @@ async function main(): Promise<void> {
   setupDrawers();
   setupCheatDrawer();
   setupSchemePicker();
+  setupWindowControls();
 
   // First launch tab restores persisted defaults; nothing else is restored.
   createTab(loadDefaultConnection(), defaultCheatState(), true);

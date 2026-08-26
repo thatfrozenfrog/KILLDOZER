@@ -17,6 +17,37 @@
   letter-spacing: 0.22em;
   font-size: 12px;
   text-shadow: none;
+  cursor: default;
+}
+
+#window-controls {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: 4px;
+}
+
+.window-control {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--fg-muted);
+  font: 18px/1 var(--font-mono);
+  cursor: pointer;
+}
+
+.window-control:hover {
+  border-color: var(--border-hairline);
+  background: var(--bg-raised);
+  color: var(--fg-emphasis);
+}
+
+.window-control.close:hover {
+  border-color: var(--status-danger);
+  background: var(--status-danger);
+  color: var(--bg-app);
 }
 
 .bar-btn,
@@ -107,4 +138,3 @@
   background: color-mix(in srgb, var(--accent-selected) 12%, var(--bg-app));
   color: var(--accent-selected);
 }
-
