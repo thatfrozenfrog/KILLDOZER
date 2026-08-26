@@ -92,6 +92,14 @@ export function activateTab(tab: Tab): void {
 }
 
 export function closeTab(tab: Tab): void {
+  if (tab.root.kind === "leaf" && tab.root.pane.isDefault) {
+    resetDefaultTab(tab);
+    return;
+  }
+  if (tab.root.kind !== "leaf" && firstLeaf(tab.root).pane.isDefault) {
+    resetDefaultTab(tab);
+    return;
+  }
   for (const leaf of [...walkLeaves(tab.root)]) {
     void disconnectShell(leaf.pane);
     leaf.pane.dispose();
@@ -104,6 +112,26 @@ export function closeTab(tab: Tab): void {
   } else if (activeTab === tab) {
     activateTab(tabs[Math.max(0, index - 1)]);
   }
+  renderTabBar();
+  refreshChrome();
+}
+
+function resetDefaultTab(tab: Tab): void {
+  const keep = firstLeaf(tab.root);
+  for (const leaf of [...walkLeaves(tab.root)]) {
+    if (leaf === keep) continue;
+    void disconnectShell(leaf.pane);
+    leaf.pane.dispose();
+  }
+  void disconnectShell(keep.pane);
+  keep.pane.showIdle();
+  keep.pane.isDefault = true;
+  keep.parent = null;
+  tab.root = keep;
+  tab.focusedLeaf = keep;
+  renderTab(tab);
+  renderTabBar();
+  if (activeTab === tab) tab.focusedLeaf.pane.term.focus();
   refreshChrome();
 }
 
@@ -152,6 +180,25 @@ export function splitLeaf(tab: Tab, leaf: LeafNode, dir: SplitDirection): Pane |
 }
 
 export function closeLeaf(tab: Tab, leaf: LeafNode): void {
+  if (!leaf.parent && leaf.pane.isDefault) {
+    const connection = cloneConnection(leaf.pane.connection);
+    const cheats = cloneCheatState(leaf.pane.cheats);
+    void disconnectShell(leaf.pane);
+    leaf.pane.dispose();
+    tab.pageEl.remove();
+    const index = tabs.indexOf(tab);
+    if (index >= 0) tabs.splice(index, 1);
+    if (activeTab === tab) activeTab = null;
+    createTab(connection, cheats, true);
+    if (tabs.length > 1 && index >= 0) {
+      const replacement = tabs[tabs.length - 1];
+      tabs.splice(tabs.length - 1, 1);
+      tabs.splice(Math.min(index, tabs.length), 0, replacement);
+      renderTabBar();
+    }
+    refreshChrome();
+    return;
+  }
   void disconnectShell(leaf.pane);
   leaf.pane.dispose();
 
@@ -173,6 +220,7 @@ export function closeLeaf(tab: Tab, leaf: LeafNode): void {
     tab.focusedLeaf.pane.term.focus();
   }
   renderTab(tab);
+  refitTab(tab);
   refreshChrome();
 }
 
@@ -186,7 +234,11 @@ function workspaceEl(): HTMLElement {
 
 function renderTab(tab: Tab): void {
   tab.pageEl.innerHTML = "";
-  tab.pageEl.appendChild(renderNode(tab, tab.root));
+  const rendered = renderNode(tab, tab.root);
+  // A pane that was previously a split child may still have an inline flex
+  // ratio; as the sole root child it must stretch across the whole page.
+  if (tab.root.kind === "leaf") rendered.style.flex = "";
+  tab.pageEl.appendChild(rendered);
   updateFocusVisuals();
   requestAnimationFrame(() => refitTab(tab));
 }
@@ -254,6 +306,8 @@ export function renderTabBar(): void {
   for (const tab of tabs) {
     const el = document.createElement("div");
     el.className = "tab" + (tab === activeTab ? " active" : "");
+    el.draggable = true;
+    el.dataset.tabId = tab.id;
     const pane = tab.focusedLeaf.pane;
     const dot = document.createElement("span");
     dot.className = "pane-status-dot " + pane.state;
@@ -262,6 +316,7 @@ export function renderTabBar(): void {
     label.textContent = pane.identity() + "@" + SSH_HOST;
     const close = document.createElement("button");
     close.className = "tab-close";
+    close.draggable = false;
     close.textContent = "\u00D7";
     close.title = "Close tab";
     close.addEventListener("click", (e) => {
@@ -278,6 +333,32 @@ export function renderTabBar(): void {
     }
     el.append(close);
     el.addEventListener("click", () => activateTab(tab));
+    el.addEventListener("dragstart", (e) => {
+      e.dataTransfer?.setData("text/plain", tab.id);
+      if (e.dataTransfer) e.dataTransfer.effectAllowed = "move";
+      el.classList.add("dragging");
+    });
+    el.addEventListener("dragend", () => {
+      el.classList.remove("dragging");
+      bar.querySelectorAll(".drag-over").forEach((node) => node.classList.remove("drag-over"));
+    });
+    el.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+      el.classList.add("drag-over");
+    });
+    el.addEventListener("dragleave", () => el.classList.remove("drag-over"));
+    el.addEventListener("drop", (e) => {
+      e.preventDefault();
+      el.classList.remove("drag-over");
+      const id = e.dataTransfer?.getData("text/plain");
+      const from = tabs.findIndex((candidate) => candidate.id === id);
+      const to = tabs.indexOf(tab);
+      if (from < 0 || from === to) return;
+      const [moved] = tabs.splice(from, 1);
+      tabs.splice(tabs.indexOf(tab) + 1, 0, moved);
+      renderTabBar();
+    });
     bar.appendChild(el);
   }
   const add = document.createElement("button");

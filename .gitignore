@@ -29,3 +29,6 @@ docs/
 .vscode/
 tests/
 .gstack/
+packaging/arch/*
+!packaging/arch/PKGBUILD
+!packaging/arch/killdozer.desktop

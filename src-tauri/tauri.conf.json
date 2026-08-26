@@ -18,8 +18,8 @@
   },
   "productName": "killdozer",
   "mainBinaryName": "killdozer",
-  "version": "0.6.7",
-  "identifier": "com.wabbit.killdozer",
+  "version": "../package.json",
+  "identifier": "com.kiwi.killdozer",
   "plugins": {},
   "app": {
     "withGlobalTauri": true,

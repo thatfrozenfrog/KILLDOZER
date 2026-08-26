@@ -38,6 +38,14 @@
   border-color: var(--border-strong);
 }
 
+.tab.dragging {
+  opacity: 0.55;
+}
+
+.tab.drag-over {
+  border-color: var(--interactive-accent);
+}
+
 .tab-close {
   background: none;
   border: none;
@@ -79,4 +87,3 @@
   color: var(--status-success);
   border-color: var(--status-success);
 }
-
