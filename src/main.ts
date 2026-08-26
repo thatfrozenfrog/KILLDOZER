@@ -1,33 +1,97 @@
-import { initTerminal, fitTerminal, idleTerminal, getTerminal } from "./terminal";
-import { setupShellEventListeners, writeToPty, getIsConnected } from "./shell";
-import { setupEventListeners, setupResizeListener } from "./events";
-import { setupResizeHandle } from "./resize";
-export const DEBUG = import.meta.env.DEV;
-export let term: ReturnType<typeof getTerminal>;
+import "@xterm/xterm/css/xterm.css";
+import "@fontsource-variable/jetbrains-mono";
+import "@fontsource/fira-code/400.css";
+import "@fontsource/fira-code/500.css";
 
-async function main() {
-  initTerminal();
-  await setupEventListeners();
-  
+import { setupEventListeners } from "./events";
+import {
+  allPanes,
+  closePaneMenu,
+  createTab,
+  getFocusedPane,
+  setupWorkspace,
+  tabs,
+} from "./workspace";
+import { closeDrawers, setupDrawers } from "./drawers";
+import { setupCheatDrawer } from "./cheat/ui";
+import { cheatsOrchestrator } from "./cheat/pencilgon";
+import { applyScheme, currentScheme, schemes } from "./theme";
+import { loadDefaultConnection } from "./shell";
+import { defaultCheatState } from "./cheat/registry";
+import { refreshChrome } from "./chrome";
+import { DEBUG } from "./gadget";
 
-  setupShellEventListeners();
-  setupResizeHandle();
-  addEventListener("resize", () => fitTerminal(getIsConnected()));
-  await fitTerminal(getIsConnected());
-  void document.fonts.ready.then(() => fitTerminal(getIsConnected()));
+function setupSchemePicker(): void {
+  const picker = document.getElementById("scheme-picker") as HTMLButtonElement;
+  const menu = document.getElementById("scheme-menu") as HTMLDivElement;
+  const control = picker.parentElement as HTMLDivElement;
 
-  term = getTerminal();
-  if (DEBUG){
-    (window as any).term = term;
+  const closeMenu = () => {
+    menu.classList.add("hidden");
+    picker.setAttribute("aria-expanded", "false");
+  };
+  const selectScheme = (slug: string) => {
+    applyScheme(slug);
+    for (const pane of allPanes()) pane.applyTheme();
+    picker.textContent = currentScheme().name;
+    menu.querySelectorAll<HTMLButtonElement>(".scheme-option").forEach((option) => {
+      option.classList.toggle("selected", option.dataset.scheme === slug);
+      option.setAttribute("aria-selected", String(option.dataset.scheme === slug));
+    });
+    closeMenu();
+  };
+
+  for (const scheme of schemes) {
+    const option = document.createElement("button");
+    option.type = "button";
+    option.className = "scheme-option";
+    option.dataset.scheme = scheme.slug;
+    option.role = "option";
+    option.textContent = scheme.name;
+    option.addEventListener("click", () => selectScheme(scheme.slug));
+    menu.appendChild(option);
   }
-  term.onData((data: string) => {
-    if (getIsConnected()) {
-      writeToPty(data);
-    }
+  selectScheme(currentScheme().slug);
+
+  picker.addEventListener("click", () => {
+    const open = menu.classList.toggle("hidden");
+    picker.setAttribute("aria-expanded", String(!open));
   });
-  
-  idleTerminal();
+  document.addEventListener("pointerdown", (event) => {
+    if (!control.contains(event.target as Node)) closeMenu();
+  });
+  picker.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") closeMenu();
+  });
 }
 
-main();
+async function main(): Promise<void> {
+  applyScheme(currentScheme().slug);
+  await setupEventListeners();
+  setupWorkspace();
+  setupDrawers();
+  setupCheatDrawer();
+  setupSchemePicker();
 
+  // First launch tab restores persisted defaults; nothing else is restored.
+  createTab(loadDefaultConnection(), defaultCheatState(), true);
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      closePaneMenu();
+      closeDrawers();
+    }
+  });
+
+  void cheatsOrchestrator();
+  refreshChrome();
+
+  if (DEBUG) {
+    const w = window as any;
+    w.tabs = tabs;
+    w.allPanes = allPanes;
+    w.getFocusedPane = getFocusedPane;
+  }
+}
+
+document.addEventListener("DOMContentLoaded", () => void main());

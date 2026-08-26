@@ -5,20 +5,28 @@
     <meta charset="UTF-8" />
     <title>Killdozer</title>
     <link rel="stylesheet" href="/src/css/styles.css" />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&display=swap">
     <script type="module" src="/src/main.ts"></script>
-    <script type="module" src="/src/cheat/ui.ts"></script>
-
-
   </head>
   <body>
-    <div id="terminal-container" class="panel terminal-panel">
-      <div id="terminal" class="terminal"></div>
-    </div>
-    <div id="resize-handle" class="resize-handle"></div>
-    <aside id="control-panel" class="control-panel">
-      <div class="ssh-title">SSH Connection</div>
-      <form id="connection-form" class="connection-form">
+    <header id="app-bar">
+      <div id="app-title">KILLDOZER</div>
+      <span class="spacer"></span>
+      <div class="scheme-control">
+        <button id="scheme-picker" class="bar-control" type="button" title="Base24 color scheme" aria-label="Color scheme" aria-haspopup="listbox" aria-expanded="false"></button>
+        <div id="scheme-menu" class="scheme-menu hidden" role="listbox" aria-label="Base24 color scheme"></div>
+      </div>
+      <button id="toggle-connection" class="bar-btn" title="Connection drawer">Connection</button>
+      <button id="toggle-cheats" class="bar-btn" title="Cheats drawer">Cheats</button>
+    </header>
+
+    <nav id="tab-bar" aria-label="Session tabs"></nav>
+
+    <main id="workspace"></main>
+
+    <aside id="connection-drawer" class="drawer left" aria-label="Connection">
+      <div class="drawer-title">SSH Connection</div>
+      <div class="drawer-target">telehack.com:2222</div>
+      <form id="connection-form" class="connection-form" onsubmit="return false">
         <label class="form-label">
           <span class="form-label-text">Username</span>
           <input type="text" id="username" value="guest" autocomplete="off" />
@@ -49,26 +57,36 @@
             <span class="form-label-text">Proxy password</span>
             <input type="password" id="proxy-password" placeholder="Proxy password" autocomplete="off" />
           </label>
+          <p class="plaintext-note">Proxy password is stored in plaintext in local storage.</p>
         </div>
 
-
-
-        <button type="submit" id="connect-btn">Connect</button>
+        <button type="button" id="connect-btn">Connect</button>
+        <button type="button" id="disconnect-btn" class="danger" disabled>Disconnect</button>
       </form>
 
-      <br>
-      <button id="disconnect-btn" class="danger" disabled>Disconnect</button>
       <div class="statusbar" id="status">
-        <hr>
+        <hr />
         <span id="status-text">Disconnected</span>
       </div>
-
-
-      <div id = "cheat">
-        <hr>
-        <input type="text" id="search"  placeholder="Search..." autocomplete="off" />
-        <div id="cheat-list" class="list"></div>
-      </div>
     </aside>
+
+    <aside id="cheats-drawer" class="drawer right" aria-label="Cheats">
+      <div id="cheats-drawer-resize" class="cheats-drawer-resize" role="separator" aria-orientation="vertical" aria-label="Resize cheats drawer" tabindex="0" title="Drag to resize"></div>
+      <div id="cheat-header">
+        <input type="search" id="search" placeholder="Search cheats" autocomplete="off" aria-label="Search cheats" />
+        <div class="dropdown-control">
+          <button id="cheat-category-filter" class="filter-btn" type="button" aria-label="Cheat category" aria-haspopup="listbox" aria-expanded="false">All categories</button>
+          <div id="cheat-category-menu" class="dropdown-menu hidden" role="listbox" aria-label="Cheat category"></div>
+        </div>
+        <div class="dropdown-control">
+          <button id="cheat-status-filter" class="filter-btn" type="button" aria-label="Cheat status" aria-haspopup="listbox" aria-expanded="false">All states</button>
+          <div id="cheat-status-menu" class="dropdown-menu hidden" role="listbox" aria-label="Cheat status"></div>
+        </div>
+        <span id="active-count"></span>
+      </div>
+      <div id="cheat-list"></div>
+    </aside>
+
+    <div id="pane-menu" class="hidden" role="menu"></div>
   </body>
 </html>

@@ -1,65 +1,48 @@
 import { listen } from "@tauri-apps/api/event";
-import { sleep } from './gadget';
-import { getTerminal, fitTerminal, idleTerminal } from "./terminal";
-import { getIsConnected, setIsConnected } from "./shell";
+import type {
+  PtyDataPayload,
+  PtyErrorPayload,
+  PtyExitPayload,
+  PtyReadyPayload,
+} from "./types";
+import { panesBySession } from "./pane";
+import { refreshChrome } from "./chrome";
 
-const connectBtn = document.getElementById("connect-btn") as HTMLButtonElement;
-const disconnectBtn = document.getElementById("disconnect-btn") as HTMLButtonElement;
-const usernameInput = document.getElementById("username") as HTMLInputElement;
-const proxyPortInput = document.getElementById("proxy-port") as HTMLInputElement;
-const statusText = document.getElementById("status-text") as HTMLSpanElement;
-
-export async function setupEventListeners() {
-  await listen("pty:ready", () => {
-    setIsConnected(true);
-    syncConnectionUi();
+/** One global set of listeners; every event is routed by sessionId. */
+export async function setupEventListeners(): Promise<void> {
+  await listen<PtyReadyPayload>("pty:ready", (event) => {
+    const pane = panesBySession.get(event.payload.sessionId);
+    if (!pane) return;
+    pane.setState("connected");
+    pane.refitNow();
+    refreshChrome();
   });
-  
-  await listen<string>("pty:data", (event) => {
-    const term = getTerminal();
-    term.write(event.payload);
+
+  await listen<PtyDataPayload>("pty:data", (event) => {
+    panesBySession
+      .get(event.payload.sessionId)
+      ?.term.write(event.payload.data);
   });
-  
-  await listen("pty:exit", async () => {
-    const term = getTerminal();
-    await term.writeln(`\r\n\x1b[33m✓ Shell exited\x1b[0m\r\n`);
-    
-    setIsConnected(false);
-    syncConnectionUi();
-    statusText.textContent = "Disconnected";
-    connectBtn.disabled = false;
-    disconnectBtn.disabled = true;
-    usernameInput.disabled = false;
-    proxyPortInput.disabled = false;
-    await sleep(100);
-    term.clear();
-    idleTerminal();
+
+  await listen<PtyExitPayload>("pty:exit", (event) => {
+    const pane = panesBySession.get(event.payload.sessionId);
+    if (!pane) return;
+    panesBySession.delete(event.payload.sessionId);
+    pane.sessionId = null;
+    pane.setState("disconnected");
+    pane.showIdle();
+    refreshChrome();
   });
-}
 
-export function setupResizeListener(isConnected: boolean) {
-  addEventListener("resize", () => fitTerminal(isConnected));
-}
-
-export function syncConnectionUi(){
-  const form = document.getElementById("connection-form");
-  const banner = document.getElementsByClassName("ssh-title")[0] as HTMLElement;
-  const cheat = document.getElementById("cheat");
-  const mymy = document.getElementById("mymy-pointer");
-  const connected = getIsConnected();
-
-  if (mymy) {
-    mymy.style.display = connected ? "none" : "block";
-  }
-  if (!form || !banner || !cheat) return;
-  
-  if (connected) {
-    form.style.display = "none";
-    banner.style.display = "none";
-    cheat.style.display = "block";
-  } else {
-    form.style.display = "flex";
-    banner.style.display = "block";
-    cheat.style.display = "none";
-  }
+  await listen<PtyErrorPayload>("pty:error", (event) => {
+    const pane = panesBySession.get(event.payload.sessionId);
+    if (!pane) return;
+    panesBySession.delete(event.payload.sessionId);
+    pane.sessionId = null;
+    pane.setState("disconnected");
+    pane.term.writeln(
+      "\r\n\x1b[31m\u2717 " + event.payload.message + "\x1b[0m\r\n"
+    );
+    refreshChrome();
+  });
 }
