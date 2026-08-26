@@ -23,3 +23,8 @@ dist-ssr
 *.sln
 *.sw?
 .agent.md
+
+.codebase-memory/
+docs/
+.vscode/
+tests/
