@@ -10,7 +10,9 @@ fi
 
 TAG="v$VERSION"
 
-pnpm version "$VERSION" --no-git-tag-version
+if [[ "$(node -p "require('./package.json').version")" != "$VERSION" ]]; then
+  pnpm version "$VERSION" --no-git-tag-version
+fi
 
 node - "$VERSION" <<'NODE'
 const fs = require("fs");
@@ -24,7 +26,7 @@ fs.writeFileSync(tauriPath, JSON.stringify(config, null, 2) + "\n");
 
 const cargoPath = "src-tauri/Cargo.toml";
 const cargo = fs.readFileSync(cargoPath, "utf8");
-fs.writeFileSync(cargoPath, cargo.replace(/(?m)^version = "[^"]+"$/, `version = "${version}"`));
+fs.writeFileSync(cargoPath, cargo.replace(/^version = "[^"]+"$/m, `version = "${version}"`));
 NODE
 
 # Keep Cargo.lock's root package version aligned with Cargo.toml.
