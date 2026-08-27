@@ -19,7 +19,7 @@
   },
   "productName": "killdozer",
   "mainBinaryName": "killdozer",
-  "version": "../package.json",
+  "version": "1.0.0",
   "identifier": "com.kiwi.killdozer",
   "plugins": {
     "updater": {

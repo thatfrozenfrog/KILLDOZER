@@ -1,11 +1,9 @@
 name: publish
 
 on:
-  workflow_dispatch:
   push:
-    branches:
-      - release
-      - main
+    tags:
+      - "v*"
 
 concurrency:
   group: publish-${{ github.ref }}
@@ -22,14 +20,6 @@ jobs:
   publish-linux:
     name: Linux
 
-    if: >
-      github.event_name == 'workflow_dispatch' ||
-      github.ref == 'refs/heads/release' ||
-      (
-        github.ref == 'refs/heads/main' &&
-        contains(github.event.head_commit.message, 'Test build')
-      )
-
     permissions:
       contents: write
 
@@ -38,6 +28,31 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+
+      - name: Get version from tag
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "Release version: $VERSION"
+
+      - name: Verify versions
+        shell: bash
+        run: |
+          PACKAGE_VERSION="$(node -p "require('./package.json').version")"
+          TAURI_VERSION="$(node -p "require('./src-tauri/tauri.conf.json').version")"
+
+          if [ "$PACKAGE_VERSION" != "$VERSION" ]; then
+            echo "package.json: $PACKAGE_VERSION"
+            echo "tag:          $VERSION"
+            exit 1
+          fi
+
+          if [ "$TAURI_VERSION" != "$VERSION" ]; then
+            echo "tauri.conf.json: $TAURI_VERSION"
+            echo "tag:             $VERSION"
+            exit 1
+          fi
 
       - name: Setup pnpm + Node
         uses: pnpm/setup@v2
@@ -75,7 +90,7 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
-          tagName: app-v__VERSION__
+          tagName: v__VERSION__
           releaseName: Killdozer v__VERSION__
           releaseBody: See the assets below to download this version.
           releaseDraft: false
@@ -153,7 +168,7 @@ jobs:
           VERSION="$(node -p "require('./package.json').version")"
 
           gh release upload \
-            "app-v${VERSION}" \
+            "v${VERSION}" \
             packaging/arch/killdozer-[0-9]*.pkg.tar.zst \
             --clobber \
             --repo "$GITHUB_REPOSITORY"
@@ -167,14 +182,6 @@ jobs:
   publish-windows:
     name: Windows
 
-    if: >
-      github.event_name == 'workflow_dispatch' ||
-      github.ref == 'refs/heads/release' ||
-      (
-        github.ref == 'refs/heads/main' &&
-        contains(github.event.head_commit.message, 'Test build')
-      )
-
     permissions:
       contents: write
 
@@ -183,6 +190,31 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+
+      - name: Get version from tag
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "Release version: $VERSION"
+
+      - name: Verify versions
+        shell: bash
+        run: |
+          PACKAGE_VERSION="$(node -p "require('./package.json').version")"
+          TAURI_VERSION="$(node -p "require('./src-tauri/tauri.conf.json').version")"
+
+          if [ "$PACKAGE_VERSION" != "$VERSION" ]; then
+            echo "package.json: $PACKAGE_VERSION"
+            echo "tag:          $VERSION"
+            exit 1
+          fi
+
+          if [ "$TAURI_VERSION" != "$VERSION" ]; then
+            echo "tauri.conf.json: $TAURI_VERSION"
+            echo "tag:             $VERSION"
+            exit 1
+          fi
 
       - name: Setup pnpm + Node
         uses: pnpm/setup@v2
@@ -210,7 +242,7 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
-          tagName: app-v__VERSION__
+          tagName: v__VERSION__
           releaseName: Killdozer v__VERSION__
           releaseBody: See the assets below to download this version.
           releaseDraft: false

@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
+    "release": "./scripts/release.sh",
     "tauri": "tauri",
     "tauri:rs": "cd src-tauri && cargo watch -x \"run --no-default-features\""
   },
