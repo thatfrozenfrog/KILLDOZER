@@ -21,6 +21,7 @@ import { defaultCheatState } from "./cheat/registry";
 import { refreshChrome } from "./chrome";
 import { DEBUG } from "./gadget";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { setupUpdater } from "./updater";
 
 function setupWindowControls(): void {
   const appWindow = getCurrentWindow();
@@ -94,6 +95,7 @@ async function main(): Promise<void> {
   setupCheatDrawer();
   setupSchemePicker();
   setupWindowControls();
+  setupUpdater();
 
   // First launch tab restores persisted defaults; nothing else is restored.
   createTab(loadDefaultConnection(), defaultCheatState(), true);

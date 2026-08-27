@@ -1,6 +1,5 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-use tauri::Emitter;
 use portable_pty::{native_pty_system, Child, CommandBuilder, PtyPair, PtySize};
 use serde::Serialize;
 use std::{
@@ -9,6 +8,7 @@ use std::{
     sync::Arc,
     thread,
 };
+use tauri::Emitter;
 
 use tauri::{async_runtime::Mutex as AsyncMutex, State, Window};
 
@@ -249,7 +249,10 @@ async fn async_resize_pty(
 }
 
 #[tauri::command]
-async fn async_terminate_shell(session_id: String, state: State<'_, AppState>) -> Result<(), String> {
+async fn async_terminate_shell(
+    session_id: String,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
     // Remove first so the reader thread treats EOF as explicit termination.
     if let Some(mut session) = state.sessions.lock().await.remove(&session_id) {
         let _ = session.child.kill();
@@ -259,6 +262,8 @@ async fn async_terminate_shell(session_id: String, state: State<'_, AppState>) -
 
 fn main() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())
         .manage(AppState {

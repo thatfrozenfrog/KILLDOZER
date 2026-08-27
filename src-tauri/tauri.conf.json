@@ -7,6 +7,7 @@
   },
   "bundle": {
     "active": true,
+    "createUpdaterArtifacts": true,
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -20,7 +21,14 @@
   "mainBinaryName": "killdozer",
   "version": "../package.json",
   "identifier": "com.kiwi.killdozer",
-  "plugins": {},
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDg2NUVFQzYzMzk3QTNENzkKUldSNVBYbzVZK3hlaHZTV1NkUnIwdURSeWFGMklvWU4yV1h4ajNrVzZDMHRqWnZ3TUZMUTZwL3QK",
+      "endpoints": [
+        "https://github.com/thatfrozenfrog/killdozer/releases/latest/download/latest.json"
+      ]
+    }
+  },
   "app": {
     "withGlobalTauri": true,
     "windows": [
