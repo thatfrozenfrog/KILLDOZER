@@ -32,9 +32,6 @@ function setupWindowControls(): void {
       void operation.catch(() => {});
     });
   });
-  document.querySelectorAll<HTMLElement>("[data-window-drag-region]").forEach((region) => {
-    region.addEventListener("pointerdown", () => void appWindow.startDragging().catch(() => {}));
-  });
   document.querySelectorAll<HTMLElement>("[data-resize-direction]").forEach((handle) => {
     handle.addEventListener("pointerdown", () => {
       const direction = handle.dataset.resizeDirection as Parameters<typeof appWindow.startResizeDragging>[0];
