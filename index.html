@@ -32,6 +32,14 @@
     <aside id="connection-drawer" class="drawer left" aria-label="Connection">
       <div class="drawer-title">SSH Connection</div>
       <div class="drawer-target">telehack.com:2222</div>
+      <div class="profile-control">
+        <label class="form-label" for="profile-picker"><span class="form-label-text">Saved profile</span></label>
+        <div class="dropdown-control">
+          <button id="profile-picker" class="filter-btn" type="button" aria-label="Saved connection profile" aria-haspopup="listbox" aria-expanded="false">Choose a profile</button>
+          <div id="profile-menu" class="dropdown-menu hidden" role="listbox" aria-label="Saved connection profile"></div>
+        </div>
+        <div id="profile-detail" class="profile-detail" aria-live="polite">Select a profile to preview its settings.</div>
+      </div>
       <form id="connection-form" class="connection-form" onsubmit="return false">
         <label class="form-label">
           <span class="form-label-text">Username</span>
@@ -68,11 +76,13 @@
 
         <button type="button" id="connect-btn">Connect</button>
         <button type="button" id="disconnect-btn" class="danger" disabled>Disconnect</button>
+        <button type="button" id="save-profile-btn" disabled>Save profile</button>
       </form>
 
       <div class="statusbar" id="status">
         <hr />
         <span id="status-text">Disconnected</span>
+        <p class="plaintext-note">Saved profile proxy passwords are stored in plaintext in local storage.</p>
       </div>
     </aside>
 
@@ -107,5 +117,21 @@
     </div>
 
     <div id="pane-menu" class="hidden" role="menu"></div>
+
+    <dialog id="profile-dialog" class="profile-dialog" aria-labelledby="profile-dialog-title">
+      <form id="profile-dialog-form" method="dialog" novalidate>
+        <div class="profile-dialog-title" id="profile-dialog-title">Save connection profile</div>
+        <p class="profile-dialog-copy">Save this pane’s current connection settings for later.</p>
+        <label class="form-label" for="profile-name">
+          <span class="form-label-text">Profile name</span>
+          <input id="profile-name" type="text" autocomplete="off" required />
+        </label>
+        <p id="profile-dialog-message" class="profile-dialog-message" role="alert"></p>
+        <div class="profile-dialog-actions">
+          <button type="button" id="profile-dialog-cancel">Cancel</button>
+          <button type="submit" id="profile-dialog-save">Save profile</button>
+        </div>
+      </form>
+    </dialog>
   </body>
 </html>

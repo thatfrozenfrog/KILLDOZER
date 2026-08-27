@@ -306,7 +306,6 @@ export function renderTabBar(): void {
   for (const tab of tabs) {
     const el = document.createElement("div");
     el.className = "tab" + (tab === activeTab ? " active" : "");
-    el.draggable = true;
     el.dataset.tabId = tab.id;
     const pane = tab.focusedLeaf.pane;
     const dot = document.createElement("span");
@@ -316,7 +315,6 @@ export function renderTabBar(): void {
     label.textContent = pane.identity() + "@" + SSH_HOST;
     const close = document.createElement("button");
     close.className = "tab-close";
-    close.draggable = false;
     close.textContent = "\u00D7";
     close.title = "Close tab";
     close.addEventListener("click", (e) => {
@@ -332,33 +330,82 @@ export function renderTabBar(): void {
       el.append(badge);
     }
     el.append(close);
-    el.addEventListener("click", () => activateTab(tab));
-    el.addEventListener("dragstart", (e) => {
-      e.dataTransfer?.setData("text/plain", tab.id);
-      if (e.dataTransfer) e.dataTransfer.effectAllowed = "move";
-      el.classList.add("dragging");
+    let dragging = false;
+    let suppressClick = false;
+    let startX = 0;
+    let originLeft = 0;
+    let tabWidth = 0;
+    let pointerId = -1;
+
+    el.addEventListener("click", () => {
+      if (suppressClick) {
+        suppressClick = false;
+        return;
+      }
+      activateTab(tab);
     });
-    el.addEventListener("dragend", () => {
-      el.classList.remove("dragging");
-      bar.querySelectorAll(".drag-over").forEach((node) => node.classList.remove("drag-over"));
+
+    el.addEventListener("pointerdown", (e) => {
+      if (e.button !== 0 || (e.target as HTMLElement).closest(".tab-close")) return;
+      startX = e.clientX;
+      const rect = el.getBoundingClientRect();
+      originLeft = rect.left;
+      tabWidth = rect.width;
+      pointerId = e.pointerId;
+      el.setPointerCapture(pointerId);
     });
-    el.addEventListener("dragover", (e) => {
-      e.preventDefault();
-      if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
-      el.classList.add("drag-over");
+
+    el.addEventListener("pointermove", (e) => {
+      if (e.pointerId !== pointerId) return;
+      const deltaX = e.clientX - startX;
+      if (!dragging && Math.abs(deltaX) < 4) return;
+      if (!dragging) {
+        dragging = true;
+        suppressClick = true;
+        el.classList.add("dragging");
+      }
+      // Keep the tab on its original horizontal track; vertical pointer
+      // movement is intentionally ignored.
+      el.style.transform = `translateX(${deltaX}px)`;
     });
-    el.addEventListener("dragleave", () => el.classList.remove("drag-over"));
-    el.addEventListener("drop", (e) => {
-      e.preventDefault();
-      el.classList.remove("drag-over");
-      const id = e.dataTransfer?.getData("text/plain");
-      const from = tabs.findIndex((candidate) => candidate.id === id);
-      const to = tabs.indexOf(tab);
-      if (from < 0 || from === to) return;
-      const [moved] = tabs.splice(from, 1);
-      tabs.splice(tabs.indexOf(tab) + 1, 0, moved);
+
+    const endDrag = (e: PointerEvent) => {
+      if (e.pointerId !== pointerId) return;
+      if (el.hasPointerCapture(pointerId)) el.releasePointerCapture(pointerId);
+      pointerId = -1;
+      if (!dragging) return;
+
+      const center = originLeft + (e.clientX - startX) + tabWidth / 2;
+      const from = tabs.indexOf(tab);
+      let to = tabs.length;
+      bar.querySelectorAll<HTMLElement>(".tab").forEach((candidate) => {
+        if (candidate === el) return;
+        const rect = candidate.getBoundingClientRect();
+        if (center < rect.left + rect.width / 2) {
+          const candidateIndex = tabs.findIndex((item) => item.id === candidate.dataset.tabId);
+          if (candidateIndex >= 0 && to === tabs.length) to = candidateIndex;
+        }
+      });
+      if (from >= 0) {
+        const [moved] = tabs.splice(from, 1);
+        if (from < to) to -= 1;
+        tabs.splice(Math.max(0, to), 0, moved);
+      }
       renderTabBar();
-    });
+    };
+
+    const cancelDrag = (e: PointerEvent) => {
+      if (e.pointerId !== pointerId) return;
+      if (el.hasPointerCapture(pointerId)) el.releasePointerCapture(pointerId);
+      pointerId = -1;
+      el.style.transform = "";
+      el.classList.remove("dragging");
+      dragging = false;
+      suppressClick = false;
+    };
+
+    el.addEventListener("pointerup", endDrag);
+    el.addEventListener("pointercancel", cancelDrag);
     bar.appendChild(el);
   }
   const add = document.createElement("button");

@@ -13,6 +13,17 @@ export interface ConnectionConfig {
   proxyPassword: string;
 }
 
+export interface ConnectionProfile {
+  name: string;
+  username: string;
+  proxyAddress: string;
+  proxyPort: string;
+  proxyUsername: string;
+  proxyPassword: string;
+  /** Kept with the profile so selecting it restores the complete proxy setup. */
+  proxyAuthEnabled: boolean;
+}
+
 export type ConnectionState = "disconnected" | "connecting" | "connected";
 
 export type SplitDirection = "row" | "col";

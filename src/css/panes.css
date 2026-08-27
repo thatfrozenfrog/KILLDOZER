@@ -92,7 +92,7 @@
 .pane-terminal .xterm {
   width: 100%;
   height: 100%;
-  /* padding: 5px 8px; */
+  padding: 5px;
 }
 
 .pane-terminal .xterm .xterm-viewport {

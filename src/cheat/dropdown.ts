@@ -8,6 +8,7 @@ export class CustomDropdown {
   private options: DropdownOption[] = [];
   private selected = "";
   private handler: ((value: string) => void) | null = null;
+  private previewHandler: ((value: string) => void) | null = null;
 
   constructor(
     private readonly button: HTMLButtonElement,
@@ -36,6 +37,8 @@ export class CustomDropdown {
       item.dataset.value = option.value;
       item.textContent = option.text;
       item.addEventListener("click", () => this.select(option.value));
+      item.addEventListener("pointerenter", () => this.previewHandler?.(option.value));
+      item.addEventListener("focus", () => this.previewHandler?.(option.value));
       this.menu.appendChild(item);
     });
     this.sync();
@@ -43,6 +46,10 @@ export class CustomDropdown {
 
   onSelect(handler: (value: string) => void): void {
     this.handler = handler;
+  }
+
+  onPreview(handler: (value: string) => void): void {
+    this.previewHandler = handler;
   }
 
   get value(): string {

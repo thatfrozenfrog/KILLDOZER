@@ -4,7 +4,7 @@ body {
   display: flex;
   flex-direction: column;
   background: var(--bg-app);
-  border: 2px solid var(--border-strong);
+  border: 3px solid var(--border-strong);
   position: relative;
 }
 

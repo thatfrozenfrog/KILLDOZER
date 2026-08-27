@@ -6,6 +6,95 @@
   gap: 10px;
 }
 
+.profile-control {
+  margin-bottom: 14px;
+}
+
+#profile-picker {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--bg-inset);
+  border: 1px solid var(--border-subtle);
+  color: var(--fg-default);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 6px 8px;
+  border-radius: 3px;
+}
+
+.profile-detail {
+  color: var(--fg-muted);
+  font-size: 10px;
+  line-height: 1.5;
+  margin-top: 5px;
+  min-height: 15px;
+}
+
+.profile-dialog {
+  width: min(360px, calc(100vw - 32px));
+  padding: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  background: var(--bg-surface);
+  color: var(--fg-default);
+  box-shadow: 0 12px 40px var(--shadow-drawer);
+}
+
+.profile-dialog::backdrop {
+  background: color-mix(in srgb, var(--bg-app) 70%, transparent);
+}
+
+.profile-dialog form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px;
+}
+
+.profile-dialog-title {
+  color: var(--accent-heading);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.profile-dialog-copy {
+  color: var(--fg-secondary);
+  font-size: 11px;
+  margin: -4px 0 2px;
+}
+
+.profile-dialog-message {
+  color: var(--status-caution);
+  font-size: 10px;
+  line-height: 1.4;
+  min-height: 14px;
+  margin: -4px 0 0;
+}
+
+.profile-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.profile-dialog-actions button {
+  border: 1px solid var(--fg-secondary);
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--fg-secondary) 18%, var(--bg-surface));
+  color: var(--fg-default);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 7px 10px;
+}
+
+.profile-dialog-actions button:hover {
+  background: var(--fg-secondary);
+  color: var(--bg-app);
+}
+
 .form-label {
   display: flex;
   flex-direction: column;
@@ -24,7 +113,8 @@
 }
 
 .connection-form input[type="text"],
-.connection-form input[type="password"] {
+.connection-form input[type="password"],
+.profile-dialog input[type="text"] {
   background: var(--bg-inset);
   border: 1px solid var(--border-subtle);
   color: var(--fg-default);
@@ -35,7 +125,8 @@
   outline: none;
 }
 
-.connection-form input:focus {
+.connection-form input:focus,
+.profile-dialog input:focus {
   border-color: var(--accent-info);
   box-shadow: 0 0 0 1px var(--accent-info);
 }
@@ -79,7 +170,8 @@
   outline-offset: 2px;
 }
 
-.connection-form input:disabled {
+.connection-form input:disabled,
+.profile-dialog input:disabled {
   opacity: 0.5;
 }
 
@@ -99,7 +191,8 @@
 }
 
 #connect-btn,
-#disconnect-btn {
+#disconnect-btn,
+#save-profile-btn {
   font-family: var(--font-mono);
   font-size: 12px;
   padding: 7px;
@@ -126,8 +219,14 @@
   color: var(--bg-app);
 }
 
+#save-profile-btn:hover:not(:disabled) {
+  background: var(--accent-info);
+  color: var(--bg-app);
+}
+
 #connect-btn:disabled,
-#disconnect-btn:disabled {
+#disconnect-btn:disabled,
+#save-profile-btn:disabled {
   opacity: 0.35;
   cursor: default;
 }

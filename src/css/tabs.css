@@ -22,9 +22,10 @@
   border: 1px solid var(--border-hairline);
   border-bottom: none;
   border-radius: 3px 3px 0 0;
-  cursor: pointer;
+  cursor: grab;
   white-space: nowrap;
   user-select: none;
+  touch-action: none;
 }
 
 .tab:hover {
@@ -40,10 +41,7 @@
 
 .tab.dragging {
   opacity: 0.55;
-}
-
-.tab.drag-over {
-  border-color: var(--interactive-accent);
+  cursor: grabbing;
 }
 
 .tab-close {
