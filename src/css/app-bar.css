@@ -12,12 +12,40 @@
 }
 
 #app-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   color: var(--accent-brand);
   font-weight: 700;
   letter-spacing: 0.22em;
   font-size: 12px;
   text-shadow: none;
   cursor: default;
+}
+
+#app-title .version {
+  font-size: 11px;
+  opacity: 0.75;
+  letter-spacing: 0.04em;
+  font-weight: 500;
+}
+
+#app-title .outdated {
+  color: #ff3344;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-shadow: 0 0 6px #ff0033, 0 0 12px #ff0033, 0 0 24px #ff0033, 0 0 36px #ff0000;
+  animation: superglow-pulse 0.1s ease-in-out infinite alternate;
+}
+
+@keyframes superglow-pulse {
+  from {
+    text-shadow: none;
+  }
+  to {
+    text-shadow: 0 0 8px #ff0033, 0 0 18px #ff0033, 0 0 32px #ff0000, 0 0 48px #ff0000;
+  }
 }
 
 #window-controls {

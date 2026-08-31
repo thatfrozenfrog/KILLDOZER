@@ -4,6 +4,10 @@ import type { CheatState, SerializedCheatState } from "./cheat/registry";
 export const SSH_HOST = "telehack.com";
 export const SSH_PORT = "2222";
 
+declare global {
+  const __VERSION__: string;
+}
+
 export interface ConnectionConfig {
   username: string;
   proxyAddress: string;
