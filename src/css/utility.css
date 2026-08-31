@@ -19,6 +19,26 @@
   color: var(--status-danger);
 }
 
+/* --- App tooltip --------------------------------------------------------- */
+
+.app-tooltip {
+  position: fixed;
+  z-index: 100;
+  max-width: 280px;
+  padding: 6px 10px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  color: var(--fg-default);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.4;
+  white-space: normal;
+  word-break: break-word;
+  box-shadow: 0 6px 16px var(--shadow-menu);
+  pointer-events: none;
+}
+
 /* --- Test mode overlay --------------------------------------------------- */
 
 .test-mode-overlay {

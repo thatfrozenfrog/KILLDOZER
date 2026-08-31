@@ -95,6 +95,10 @@
   color: var(--bg-app);
 }
 
+.profile-dialog-actions button.primary {
+
+  font-weight: 600;
+}
 .form-label {
   display: flex;
   flex-direction: column;

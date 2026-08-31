@@ -27,6 +27,54 @@ export function toggleDrawer(id: string): void {
   if (!wasOpen) drawer.classList.add("open");
 }
 
+export function confirmDialog(message: string, title = "Confirm"): Promise<boolean> {
+  const dialog = document.getElementById("confirm-dialog") as HTMLDialogElement | null;
+  if (!dialog) return Promise.resolve(window.confirm(message));
+
+  const titleEl = document.getElementById("confirm-dialog-title");
+  const msgEl = document.getElementById("confirm-dialog-message");
+  const cancelBtn = document.getElementById("confirm-dialog-cancel") as HTMLButtonElement | null;
+  const form = document.getElementById("confirm-dialog-form") as HTMLFormElement | null;
+
+  if (titleEl) titleEl.textContent = title;
+  if (msgEl) msgEl.textContent = message;
+
+  return new Promise((resolve) => {
+    let resolved = false;
+    const finish = (result: boolean) => {
+      if (resolved) return;
+      resolved = true;
+      cancelBtn?.removeEventListener("click", onCancel);
+      dialog.removeEventListener("close", onClose);
+      if (form) form.onsubmit = null;
+      if (dialog.open) dialog.close();
+      resolve(result);
+    };
+
+    const onCancel = (e: Event) => {
+      e.preventDefault();
+      finish(false);
+    };
+    const onClose = () => {
+      finish(dialog.returnValue === "confirm");
+    };
+
+    cancelBtn?.addEventListener("click", onCancel);
+    dialog.addEventListener("close", onClose);
+    dialog.returnValue = "";
+
+    if (form) {
+      form.onsubmit = (e) => {
+        e.preventDefault();
+        dialog.returnValue = "confirm";
+        finish(true);
+      };
+    }
+
+    dialog.showModal();
+  });
+}
+
 export function setupDrawers(): void {
   el("toggle-connection").addEventListener("click", () => toggleDrawer("connection-drawer"));
   el("toggle-cheats").addEventListener("click", () => toggleDrawer("cheats-drawer"));
@@ -44,7 +92,6 @@ export function setupDrawers(): void {
   const profilePicker = el<HTMLButtonElement>("profile-picker");
   const profileMenu = el<HTMLDivElement>("profile-menu");
   const profileDropdown = new CustomDropdown(profilePicker, profileMenu);
-  const profileDetail = el<HTMLDivElement>("profile-detail");
   const saveProfileBtn = el<HTMLButtonElement>("save-profile-btn");
   const profileDialog = el<HTMLDialogElement>("profile-dialog");
   const profileDialogForm = el<HTMLFormElement>("profile-dialog-form");
@@ -61,28 +108,25 @@ export function setupDrawers(): void {
   const renderProfiles = (selected = profileDropdown.value) => {
     profileDropdown.setOptions([
       { value: "", text: "Choose a profile" },
-      ...profiles().map((profile) => ({ value: profile.name, text: profile.name,
+      ...profiles().map((profile) => ({
+        value: profile.name,
+        text: profile.name,
+        tooltip: `${profile.username || "guest"} · ${profile.proxyAddress || "no proxy"}${profile.proxyPort ? ":" + profile.proxyPort : ""} · ${profile.proxyUsername || "no proxy user"} · password ${profile.proxyPassword || "not set"}`,
         actionLabel: "Save current configuration to " + profile.name,
-        onAction: () => {
+        onAction: async () => {
+          const confirmed = await confirmDialog(`Save current configuration to "${profile.name}"?`, "Save Profile");
+          if (!confirmed) return;
           const pane = getFocusedPane();
           const defaultPane = Array.from(allPanes()).find((candidate) => candidate.isDefault);
           if (pane) {
             saveConnectionProfile(profile.name, pane.connection, defaultPane ? serializeCheatState(defaultPane.cheats) : profile.cheats);
             renderProfiles(profile.name);
-            updateProfileDetail(profile.name);
           }
         },
       })),
     ], selected);
   };
-  const updateProfileDetail = (value = profileDropdown.value) => {
-    const profile = profiles().find((candidate) => candidate.name === value);
-    profileDetail.textContent = profile
-      ? `${profile.username || "guest"} · ${profile.proxyAddress || "no proxy"}${profile.proxyPort ? ":" + profile.proxyPort : ""} · ${profile.proxyUsername || "no proxy user"} · password ••••`
-      : "Select a profile to preview its settings.";
-  };
   renderProfiles();
-  profileDropdown.onPreview(updateProfileDetail);
 
   const edit = (fn: (pane: Pane) => void) => () => {
     const pane = getFocusedPane();
@@ -113,7 +157,6 @@ export function setupDrawers(): void {
     if (pane) void disconnectShell(pane);
   });
   profileDropdown.onSelect((value) => {
-    updateProfileDetail(value);
     const pane = getFocusedPane();
     const profile = profiles().find((candidate) => candidate.name === value);
     if (!pane || pane.state !== "disconnected" || !profile) return;
@@ -168,7 +211,6 @@ export function setupDrawers(): void {
     if (defaultPane) saveConnectionProfile(name, pane.connection, defaultPane.cheats);
     else saveConnectionProfile(name, pane.connection);
     renderProfiles(name);
-    updateProfileDetail(name);
     closeProfileDialog();
   });
 
@@ -192,8 +234,6 @@ export function setupDrawers(): void {
       });
       renderProfiles(matching?.name ?? "");
     }
-
-    updateProfileDetail();
 
     username.disabled = busy;
     proxyIp.disabled = busy;

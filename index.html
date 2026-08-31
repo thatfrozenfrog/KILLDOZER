@@ -38,7 +38,6 @@
           <button id="profile-picker" class="filter-btn" type="button" aria-label="Saved connection profile" aria-haspopup="listbox" aria-expanded="false">Choose a profile</button>
           <div id="profile-menu" class="dropdown-menu hidden" role="listbox" aria-label="Saved connection profile"></div>
         </div>
-        <div id="profile-detail" class="profile-detail" aria-live="polite">Select a profile to preview its settings.</div>
       </div>
       <form id="connection-form" class="connection-form" onsubmit="return false">
         <label class="form-label">
@@ -130,6 +129,16 @@
         <div class="profile-dialog-actions">
           <button type="button" id="profile-dialog-cancel">Cancel</button>
           <button type="submit" id="profile-dialog-save">Save profile</button>
+        </div>
+      </form>
+    </dialog>
+    <dialog id="confirm-dialog" class="profile-dialog confirm-dialog" aria-labelledby="confirm-dialog-title">
+      <form id="confirm-dialog-form" method="dialog">
+        <div class="profile-dialog-title" id="confirm-dialog-title">Confirm</div>
+        <p id="confirm-dialog-message" class="profile-dialog-copy">Are you sure?</p>
+        <div class="profile-dialog-actions">
+          <button type="button" id="confirm-dialog-cancel">Cancel</button>
+          <button type="submit" id="confirm-dialog-confirm" class="primary">Save</button>
         </div>
       </form>
     </dialog>
