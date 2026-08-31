@@ -22,6 +22,7 @@ import { refreshChrome } from "./chrome";
 import { DEBUG } from "./gadget";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { setupUpdater } from "./updater";
+import { initTestMode, setupTestModeOverlay } from "./test-mode";
 
 function setupWindowControls(): void {
   const appWindow = getCurrentWindow();
@@ -85,6 +86,7 @@ function setupSchemePicker(): void {
 }
 
 async function main(): Promise<void> {
+  await initTestMode();
   applyScheme(currentScheme().slug);
   await setupEventListeners();
   setupWorkspace();
@@ -93,6 +95,7 @@ async function main(): Promise<void> {
   setupSchemePicker();
   setupWindowControls();
   setupUpdater();
+  setupTestModeOverlay();
 
   // First launch tab restores persisted defaults; nothing else is restored.
   createTab(loadDefaultConnection(), defaultCheatState(), true);

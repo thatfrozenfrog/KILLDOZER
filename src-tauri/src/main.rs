@@ -260,6 +260,11 @@ async fn async_terminate_shell(
     Ok(())
 }
 
+#[tauri::command]
+fn is_test_server() -> bool {
+    std::env::args().any(|arg| arg == "--test-server" || arg == "test")
+}
+
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_process::init())
@@ -273,7 +278,8 @@ fn main() {
             async_write_to_pty,
             async_resize_pty,
             async_create_shell,
-            async_terminate_shell
+            async_terminate_shell,
+            is_test_server
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

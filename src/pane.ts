@@ -5,6 +5,7 @@ import type { ConnectionConfig, ConnectionState } from "./types";
 import type { CheatState } from "./cheat/registry";
 import { currentScheme, xtermTheme } from "./theme";
 import { c } from "./gadget";
+import { isTestMode } from "./test-mode";
 
 export const panesBySession = new Map<string, Pane>();
 
@@ -44,6 +45,8 @@ export class Pane {
       fontFamily: "JetBrains Mono Variable, JetBrains Mono, monospace",
       fontSize: 14,
       theme: xtermTheme(currentScheme().palette),
+      disableStdin: false,
+      cursorBlink: true,
     });
     this.term.options.convertEol = true;
     this.term.loadAddon(this.fitAddon);
@@ -131,6 +134,7 @@ export class Pane {
   showIdle(): void {
     this.term.clear();
     this.term.reset();
+    if (isTestMode()) return;
     const block =
       "\n" +
       c("brightYellow", 'M""MMMMM""M') + " " + c("brightCyan", "oo dP dP       dP                                     ") + "\n" +

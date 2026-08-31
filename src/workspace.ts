@@ -14,6 +14,7 @@ import { cloneCheatState, defaultCheatState } from "./cheat/registry";
 import type { CheatState } from "./cheat/registry";
 import { refreshChrome } from "./chrome";
 import { shouldConnectSplitChild } from "./workspace-logic";
+import { isTestMode } from "./test-mode";
 
 export const MIN_PANE_WIDTH = 320;
 export const MIN_PANE_HEIGHT = 200;
@@ -77,7 +78,11 @@ export function createTab(
   workspaceEl().appendChild(pageEl);
   renderTab(tab);
   activateTab(tab);
-  pane.showIdle();
+  if (isTestMode()) {
+    void connectShell(pane);
+  } else {
+    pane.showIdle();
+  }
   return tab;
 }
 
@@ -124,7 +129,11 @@ function resetDefaultTab(tab: Tab): void {
     leaf.pane.dispose();
   }
   void disconnectShell(keep.pane);
-  keep.pane.showIdle();
+  if (isTestMode()) {
+    void connectShell(keep.pane);
+  } else {
+    keep.pane.showIdle();
+  }
   keep.pane.isDefault = true;
   keep.parent = null;
   tab.root = keep;
@@ -423,9 +432,9 @@ export function renderTabBar(): void {
 function wireLeaf(tab: Tab, leaf: LeafNode): void {
   const el = leaf.pane.el;
 
-  leaf.pane.term.onData((data) => writeToPty(leaf.pane, data));
+  leaf.pane.term.onData((data: string) => writeToPty(leaf.pane, data));
 
-  el.addEventListener("mousedown", (e) => {
+  el.addEventListener("mousedown", (e: MouseEvent) => {
     if (e.button === 2) {
       // Right-click always belongs to the app menu, never the remote session.
       e.stopPropagation();
@@ -435,13 +444,13 @@ function wireLeaf(tab: Tab, leaf: LeafNode): void {
     focusLeaf(tab, leaf);
   }, true);
 
-  el.addEventListener("contextmenu", (e) => {
+  el.addEventListener("contextmenu", (e: MouseEvent) => {
     e.preventDefault();
     focusLeaf(tab, leaf);
     openPaneMenu(e.clientX, e.clientY, tab, leaf);
   });
 
-  el.querySelector(".pane-toolbar")?.addEventListener("click", (e) => {
+  el.querySelector(".pane-toolbar")?.addEventListener("click", (e: Event) => {
     const action = (e.target as HTMLElement).dataset?.action;
     if (!action) return;
     e.stopPropagation();

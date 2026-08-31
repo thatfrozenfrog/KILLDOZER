@@ -3,6 +3,7 @@ import type { ConnectionConfig } from "./types";
 import { SSH_HOST, SSH_PORT, blankConnection } from "./types";
 import { Pane, panesBySession } from "./pane";
 import { refreshChrome } from "./chrome";
+import { isTestMode } from "./test-mode";
 
 const STORAGE_KEY = "shell-settings";
 
@@ -46,6 +47,18 @@ export function saveDefaultConnection(config: ConnectionConfig): void {
 }
 
 export function writeToPty(pane: Pane, data: string): void {
+  if (isTestMode()) {
+    if (data === "\r") {
+      pane.term.write("\r\n");
+    } else if (data === "\x7f" || data === "\b" || data === "\x08") {
+      if (pane.term.buffer.active.cursorX > 0) {
+        pane.term.write("\b \b");
+      }
+    } else {
+      pane.term.write(data);
+    }
+    return;
+  }
   if (pane.state === "connected" && pane.sessionId) {
     void invoke("async_write_to_pty", {
       sessionId: pane.sessionId,
@@ -56,6 +69,19 @@ export function writeToPty(pane: Pane, data: string): void {
 
 export async function connectShell(pane: Pane): Promise<void> {
   if (pane.state !== "disconnected") return;
+
+  if (isTestMode()) {
+    const sessionId = crypto.randomUUID();
+    pane.sessionId = sessionId;
+    panesBySession.set(sessionId, pane);
+    if (pane.isDefault) saveDefaultConnection(pane.connection);
+    pane.setState("connected");
+    pane.term.clear();
+    pane.refitNow();
+    refreshChrome();
+    return;
+  }
+
   pane.setState("connecting");
   pane.term.clear();
 
@@ -97,10 +123,12 @@ export async function disconnectShell(pane: Pane): Promise<void> {
   panesBySession.delete(sessionId);
   pane.sessionId = null;
   pane.setState("disconnected");
-  try {
-    await invoke("async_terminate_shell", { sessionId });
-  } catch (error) {
-    console.error("Error terminating shell:", error);
+  if (!isTestMode()) {
+    try {
+      await invoke("async_terminate_shell", { sessionId });
+    } catch (error) {
+      console.error("Error terminating shell:", error);
+    }
   }
   pane.showIdle();
   refreshChrome();

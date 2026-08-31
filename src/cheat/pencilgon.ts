@@ -2,6 +2,7 @@ import type { Pane } from "../pane";
 import type { Cheat } from "./registry";
 import { allPanes } from "../workspace";
 import { sleep } from "../gadget";
+import { isCheatEvaluationPaused } from "../test-mode";
 import * as autologin from "./module/automation/autologin";
 
 export const INTERVAL = 250; // milliseconds
@@ -10,6 +11,10 @@ export const INTERVAL = 250; // milliseconds
 export async function cheatsOrchestrator(): Promise<void> {
   console.log("[DEBUG] cheatsOrchestrator running");
   while (true) {
+    if (isCheatEvaluationPaused()) {
+      await sleep(INTERVAL);
+      continue;
+    }
     for (const pane of allPanes()) {
       if (pane.state !== "connected" || pane.busy) continue;
       for (const category of Object.keys(pane.cheats)) {
