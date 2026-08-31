@@ -37,7 +37,7 @@ if [ -f CHANGELOG.md ]; then
   git add CHANGELOG.md
 fi
 git commit -m "chore(release): $TAG"
-git tag "$TAG"
+git tag -a "$TAG" -m "chore(release): $TAG"
 
 echo
 echo "Created $TAG"
