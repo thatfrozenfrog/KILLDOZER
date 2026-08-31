@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.2.0
+### Nu-Features
+- Icon
+### Improvements
+- Fixed bug with Github API preventing user from downloading new patches
+- Added an alert before downloading
+- "DOCTOOS"
+- Added download progress hook
+
+
 ## 1.1.0
 
 ### Nu-Feat
@@ -10,7 +20,7 @@ All notable changes to this project will be documented in this file.
 
 ### Improvements
 - Better tab control for nusoi
-- You now no longer be albe to select text outside of terminal
+- You now no longer be able to select text outside of terminal
 - Adjusted opacity
 
 
