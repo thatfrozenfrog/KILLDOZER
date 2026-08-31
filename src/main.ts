@@ -23,6 +23,7 @@ import { DEBUG } from "./gadget";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { setupUpdater } from "./updater";
 import { initTestMode, setupTestModeOverlay } from "./test-mode";
+import { initDozer } from "./dozer";
 
 function setupWindowControls(): void {
   const appWindow = getCurrentWindow();
@@ -96,6 +97,7 @@ async function main(): Promise<void> {
   setupWindowControls();
   setupUpdater();
   setupTestModeOverlay();
+  initDozer();
 
   // First launch tab restores persisted defaults; nothing else is restored.
   createTab(loadDefaultConnection(), defaultCheatState(), true);

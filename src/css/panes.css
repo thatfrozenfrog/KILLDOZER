@@ -87,6 +87,7 @@
   min-height: 0;
   position: relative;
   background: var(--bg-app);
+  overflow: hidden;
 }
 
 .pane-terminal .xterm {

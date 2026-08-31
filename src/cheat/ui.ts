@@ -1,6 +1,6 @@
 import type { Pane } from "../pane";
 import { getFocusedPane } from "../workspace";
-import { onChromeChange } from "../chrome";
+import { onChromeChange, refreshChrome } from "../chrome";
 import {
   Cheat,
   ConfigOption,
@@ -77,6 +77,7 @@ function buildCheatCard(pane: Pane, cheat: Cheat): HTMLElement {
     showToast(cheat.name + (cheat.enabled ? " enabled" : " disabled"));
     persist(pane);
     render(pane);
+    refreshChrome();
   });
   card.addEventListener("contextmenu", (event) => {
     event.preventDefault();
@@ -100,7 +101,10 @@ function createConfigElement(pane: Pane, config: ConfigOption): HTMLElement {
   wrapper.className = "config-item";
   const label = document.createElement("label");
   label.textContent = config.label;
-  const save = () => persist(pane);
+  const save = () => {
+    persist(pane);
+    refreshChrome();
+  };
 
   switch (config.type) {
     case "input": {

@@ -76,6 +76,12 @@ function builtinCheats(): CheatState {
         { type: "slider", label: "WPM", min: 10, max: 200, value: 60 },
       ]),
     ],
+    Misc: [
+      new Cheat("Killdozer", "Bulldozer companion trigger and customization.", [
+        { type: "slider", label: "Size", min: 20, max: 300, step: 10, value: 100 },
+        { type: "slider", label: "Speed", min: 1, max: 20, step: 1, value: 5 },
+      ]),
+    ],
   };
 }
 
