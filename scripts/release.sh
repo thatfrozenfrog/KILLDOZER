@@ -33,6 +33,9 @@ NODE
 cargo check --manifest-path src-tauri/Cargo.toml
 
 git add package.json pnpm-lock.yaml src-tauri/tauri.conf.json src-tauri/Cargo.toml src-tauri/Cargo.lock
+if [ -f CHANGELOG.md ]; then
+  git add CHANGELOG.md
+fi
 git commit -m "chore(release): $TAG"
 git tag "$TAG"
 

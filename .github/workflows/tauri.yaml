@@ -83,6 +83,23 @@ jobs:
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Extract changelog
+        id: changelog
+        shell: bash
+        run: |
+          CHANGELOG_BODY="$(bash scripts/extract-changelog.sh "$VERSION" CHANGELOG.md || true)"
+
+          if [ -z "$CHANGELOG_BODY" ]; then
+            CHANGELOG_BODY="See the assets below to download this version."
+          fi
+
+          EOF_DELIMITER="EOF_CHANGELOG_${RANDOM}_$(date +%s)"
+          {
+            echo "body<<$EOF_DELIMITER"
+            echo "$CHANGELOG_BODY"
+            echo "$EOF_DELIMITER"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Build and publish Linux bundles
         uses: tauri-apps/tauri-action@v1
         env:
@@ -92,7 +109,7 @@ jobs:
         with:
           tagName: v__VERSION__
           releaseName: Killdozer v__VERSION__
-          releaseBody: See the assets below to download this version.
+          releaseBody: ${{ steps.changelog.outputs.body }}
           releaseDraft: false
           prerelease: false
 
@@ -235,6 +252,23 @@ jobs:
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Extract changelog
+        id: changelog
+        shell: bash
+        run: |
+          CHANGELOG_BODY="$(bash scripts/extract-changelog.sh "$VERSION" CHANGELOG.md || true)"
+
+          if [ -z "$CHANGELOG_BODY" ]; then
+            CHANGELOG_BODY="See the assets below to download this version."
+          fi
+
+          EOF_DELIMITER="EOF_CHANGELOG_${RANDOM}_$(date +%s)"
+          {
+            echo "body<<$EOF_DELIMITER"
+            echo "$CHANGELOG_BODY"
+            echo "$EOF_DELIMITER"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Build and publish Windows bundles
         uses: tauri-apps/tauri-action@v1
         env:
@@ -244,6 +278,6 @@ jobs:
         with:
           tagName: v__VERSION__
           releaseName: Killdozer v__VERSION__
-          releaseBody: See the assets below to download this version.
+          releaseBody: ${{ steps.changelog.outputs.body }}
           releaseDraft: false
           prerelease: false
