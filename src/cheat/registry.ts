@@ -44,6 +44,7 @@ export class Cheat {
 }
 
 export type CheatState = Record<string, Cheat[]>;
+export type SerializedCheatState = Record<string, Array<{ name: string; enabled: boolean; config?: Array<{ label: string; value?: string | number | boolean }> }>>;
 
 function builtinCheats(): CheatState {
   return {
@@ -80,8 +81,8 @@ function builtinCheats(): CheatState {
 
 const STORAGE_KEY = "cheat-settings";
 
-function serialize(state: CheatState): Record<string, any> {
-  const settings: Record<string, any> = {};
+function serialize(state: CheatState): SerializedCheatState {
+  const settings: SerializedCheatState = {};
   Object.keys(state).forEach((cat) => {
     settings[cat] = state[cat].map((cheat) => ({
       name: cheat.name,
@@ -90,6 +91,10 @@ function serialize(state: CheatState): Record<string, any> {
     }));
   });
   return settings;
+}
+
+export function serializeCheatState(state: CheatState): SerializedCheatState {
+  return serialize(state);
 }
 
 function applySaved(state: CheatState, saved: any): void {
@@ -107,6 +112,9 @@ function applySaved(state: CheatState, saved: any): void {
       }
     });
   });
+}
+export function applyCheatSettings(state: CheatState, saved: SerializedCheatState): void {
+  applySaved(state, saved);
 }
 
 /** Fresh default cheat state: built-ins with persisted defaults applied. */

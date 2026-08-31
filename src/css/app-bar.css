@@ -138,3 +138,7 @@
   background: color-mix(in srgb, var(--accent-selected) 12%, var(--bg-app));
   color: var(--accent-selected);
 }
+.dropdown-option-row { display: flex; align-items: stretch; }
+.dropdown-option-row .dropdown-option { flex: 1; }
+.dropdown-option-action { width: 30px; padding: 0; border: 1px solid transparent; background: transparent; color: var(--accent-brand); cursor: pointer; font: 14px/1 var(--font-mono); }
+.dropdown-option-action:hover, .dropdown-option-action:focus-visible { border-color: var(--border-strong); background: var(--bg-raised); color: var(--fg-emphasis); outline: none; }

@@ -269,7 +269,7 @@
   border-top: 1px solid var(--fg-secondary);
   border-color: var(--accent-info);
 
-  background: color-mix(in srgb, var(--accent-info) 8%, transparent);
+  background: color-mix(in srgb, var(--accent-info) 18%, transparent);
   color: var(--accent-info);
   font: inherit;
   font-size: 10px;
@@ -349,7 +349,7 @@
 .cheat-config-status.enabled {
   border-color: var(--status-success);
   color: var(--status-success);
-  background: color-mix(in srgb, var(--status-success) 10%, transparent);
+  background: color-mix(in srgb, var(--status-success) 18%, transparent);
 }
 
 .cheat-config-close {

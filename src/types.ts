@@ -1,5 +1,5 @@
 import type { Pane } from "./pane";
-import type { CheatState } from "./cheat/registry";
+import type { CheatState, SerializedCheatState } from "./cheat/registry";
 
 export const SSH_HOST = "telehack.com";
 export const SSH_PORT = "2222";
@@ -22,6 +22,8 @@ export interface ConnectionProfile {
   proxyPassword: string;
   /** Kept with the profile so selecting it restores the complete proxy setup. */
   proxyAuthEnabled: boolean;
+  /** Default-pane cheat settings captured with this profile (cheats: SerializedCheatState). */
+  cheats?: SerializedCheatState;
 }
 
 export type ConnectionState = "disconnected" | "connecting" | "connected";

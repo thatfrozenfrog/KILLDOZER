@@ -15,7 +15,7 @@ let configuring: Cheat | null = null;
 let categoryDropdown: CustomDropdown | null = null;
 const filters: CheatFilters = { query: "", category: "", status: "all" };
 const DRAWER_WIDTH_KEY = "cheats-drawer-width";
-const MIN_DRAWER_WIDTH = 520;
+const MIN_DRAWER_WIDTH = 600;
 const MAX_DRAWER_WIDTH_RATIO = 0.74;
 
 function list(): HTMLElement {
@@ -395,6 +395,9 @@ export function setupCheatDrawer(): void {
     configuring = null;
     render(pane);
   });
+}
+export function invalidateCheatDrawer(): void {
+  renderedPane = null;
 }
 
 function setupDrawerResize(): void {

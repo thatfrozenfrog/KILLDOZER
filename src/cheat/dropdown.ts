@@ -1,8 +1,9 @@
 export interface DropdownOption {
   value: string;
   text: string;
+  actionLabel?: string;
+  onAction?: () => void;
 }
-
 /** Base24 listbox replacement for a native select. */
 export class CustomDropdown {
   private options: DropdownOption[] = [];
@@ -30,6 +31,8 @@ export class CustomDropdown {
     this.selected = selected;
     this.menu.replaceChildren();
     options.forEach((option) => {
+      const row = document.createElement("div");
+      row.className = "dropdown-option-row";
       const item = document.createElement("button");
       item.type = "button";
       item.className = "dropdown-option";
@@ -39,7 +42,21 @@ export class CustomDropdown {
       item.addEventListener("click", () => this.select(option.value));
       item.addEventListener("pointerenter", () => this.previewHandler?.(option.value));
       item.addEventListener("focus", () => this.previewHandler?.(option.value));
-      this.menu.appendChild(item);
+      row.appendChild(item);
+      if (option.onAction) {
+        const action = document.createElement("button");
+        action.type = "button";
+        action.className = "dropdown-option-action";
+        action.textContent = "💾";//"▣";
+        action.title = option.actionLabel ?? "Save current configuration";
+        action.setAttribute("aria-label", action.title);
+        action.addEventListener("click", (event) => {
+          event.stopPropagation();
+          option.onAction?.();
+        });
+        row.appendChild(action);
+      }
+      this.menu.appendChild(row);
     });
     this.sync();
   }

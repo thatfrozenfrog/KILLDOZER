@@ -1,8 +1,10 @@
-import { getFocusedPane } from "./workspace";
+import { getFocusedPane, allPanes } from "./workspace";
 import { connectShell, disconnectShell, saveDefaultConnection } from "./shell";
 import { onChromeChange, refreshChrome } from "./chrome";
 import type { Pane } from "./pane";
 import { loadConnectionProfiles, profileToConnection, saveConnectionProfile } from "./profiles";
+import { applyCheatSettings, saveDefaultCheats, serializeCheatState } from "./cheat/registry";
+import { invalidateCheatDrawer } from "./cheat/ui";
 import { CustomDropdown } from "./cheat/dropdown";
 
 let boundPane: Pane | null = null;
@@ -59,7 +61,18 @@ export function setupDrawers(): void {
   const renderProfiles = (selected = profileDropdown.value) => {
     profileDropdown.setOptions([
       { value: "", text: "Choose a profile" },
-      ...profiles().map((profile) => ({ value: profile.name, text: profile.name })),
+      ...profiles().map((profile) => ({ value: profile.name, text: profile.name,
+        actionLabel: "Save current configuration to " + profile.name,
+        onAction: () => {
+          const pane = getFocusedPane();
+          const defaultPane = Array.from(allPanes()).find((candidate) => candidate.isDefault);
+          if (pane) {
+            saveConnectionProfile(profile.name, pane.connection, defaultPane ? serializeCheatState(defaultPane.cheats) : profile.cheats);
+            renderProfiles(profile.name);
+            updateProfileDetail(profile.name);
+          }
+        },
+      })),
     ], selected);
   };
   const updateProfileDetail = (value = profileDropdown.value) => {
@@ -105,6 +118,13 @@ export function setupDrawers(): void {
     const profile = profiles().find((candidate) => candidate.name === value);
     if (!pane || pane.state !== "disconnected" || !profile) return;
     pane.connection = profileToConnection(profile);
+    const defaultPane = Array.from(allPanes()).find((candidate) => candidate.isDefault);
+    // applyCheatSettingsdefaultPane.cheats, profile.cheats
+    if (defaultPane && profile.cheats) {
+      applyCheatSettings(defaultPane.cheats, profile.cheats);
+      saveDefaultCheats(defaultPane.cheats);
+      invalidateCheatDrawer();
+    }
     boundPane = null;
     refreshChrome();
   });
@@ -143,7 +163,10 @@ export function setupDrawers(): void {
       profileDialogSave.textContent = "Replace profile";
       return;
     }
-    saveConnectionProfile(name, pane.connection);
+    const defaultPane = Array.from(allPanes()).find((candidate) => candidate.isDefault);
+    // saveConnectionProfilename, pane.connection, defaultPane.cheats
+    if (defaultPane) saveConnectionProfile(name, pane.connection, defaultPane.cheats);
+    else saveConnectionProfile(name, pane.connection);
     renderProfiles(name);
     updateProfileDetail(name);
     closeProfileDialog();
