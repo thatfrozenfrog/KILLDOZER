@@ -4,7 +4,6 @@ import { allPanes } from "../workspace";
 import { sleep } from "../gadget";
 import { isCheatEvaluationPaused } from "../test-mode";
 import * as autologin from "./module/automation/autologin";
-import * as killdozer from "./module/misc/killdozer";
 
 export const INTERVAL = 250; // milliseconds
 
@@ -37,9 +36,6 @@ async function tick(pane: Pane, cheat: Cheat): Promise<void> {
   switch (cheat.name) {
     case "Autologin":
       await autologin.tick(pane, cheat);
-      break;
-    case "Killdozer":
-      await killdozer.tick(pane, cheat);
       break;
   }
 }
