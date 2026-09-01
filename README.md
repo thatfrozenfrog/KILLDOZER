@@ -42,7 +42,7 @@
     <a href="https://github.com/thatfrozenfrog/KILLDOZER/releases/latest"><strong>Download here »</strong></a>
     <br />
     <br />
-    <a href="https://github.com/thatfrozenfrog/KILLDOZER/blob/main/extern/demo.webm">View Demo</a>
+    <a href="https://github.com/thatfrozenfrog/KILLDOZER/blob/main/extern/demo.mp4">View Demo</a>
     &middot;
     <a href="https://github.com/thatfrozenfrog/killdozer/issues/new?labels=bug&template=bug-report---.md">Report Bug</a>
     &middot;
@@ -162,6 +162,7 @@ Before compiling the app, make sure you have the required tooling installed for 
 ## Usage
 
 [![How to Use](/extern/how2use.png)]()
+[![Demo](/extern/demo.mp4)]()
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
