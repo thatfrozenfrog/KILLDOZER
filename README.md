@@ -162,7 +162,10 @@ Before compiling the app, make sure you have the required tooling installed for 
 ## Usage
 
 [![How to Use](/extern/how2use.png)]()
-[![Demo](/extern/demo.mp4)]()
+<video>
+  <source src="extern/demo.mp4" type="video/mp4">
+  Your browser does not support the video tag.
+</video>
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
