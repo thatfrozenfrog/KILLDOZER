@@ -27,48 +27,6 @@ export function toggleDrawer(id: string): void {
   if (!wasOpen) drawer.classList.add("open");
 }
 
-function parseInline(text: string): string {
-  return text
-    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
-    .replace(/`([^`]+)`/g, '<code class="md-code">$1</code>');
-}
-
-export function renderSimpleMarkdown(text: string): string {
-  const escaped = text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-
-  const lines = escaped.split("\n");
-  const htmlLines: string[] = [];
-  let inList = false;
-
-  for (const rawLine of lines) {
-    const line = rawLine.trim();
-    if (line.startsWith("### ")) {
-      if (inList) { htmlLines.push("</ul>"); inList = false; }
-      htmlLines.push(`<div class="md-h3">${parseInline(line.slice(4))}</div>`);
-    } else if (line.startsWith("## ")) {
-      if (inList) { htmlLines.push("</ul>"); inList = false; }
-      htmlLines.push(`<div class="md-h2">${parseInline(line.slice(3))}</div>`);
-    } else if (line.startsWith("# ")) {
-      if (inList) { htmlLines.push("</ul>"); inList = false; }
-      htmlLines.push(`<div class="md-h1">${parseInline(line.slice(2))}</div>`);
-    } else if (line.startsWith("- ") || line.startsWith("* ")) {
-      if (!inList) { htmlLines.push('<ul class="md-list">'); inList = true; }
-      htmlLines.push(`<li>${parseInline(line.slice(2))}</li>`);
-    } else if (line === "") {
-      if (inList) { htmlLines.push("</ul>"); inList = false; }
-      htmlLines.push('<div class="md-gap"></div>');
-    } else {
-      if (inList) { htmlLines.push("</ul>"); inList = false; }
-      htmlLines.push(`<p class="md-p">${parseInline(line)}</p>`);
-    }
-  }
-  if (inList) htmlLines.push("</ul>");
-  return htmlLines.join("");
-}
-
 export function confirmDialog(
   message: string,
   title = "Confirm",
@@ -85,7 +43,10 @@ export function confirmDialog(
 
   if (titleEl) titleEl.textContent = title;
   if (confirmBtn) confirmBtn.textContent = confirmText;
-  if (msgEl) msgEl.innerHTML = renderSimpleMarkdown(message);
+  if (msgEl) {
+    msgEl.textContent = message;
+    msgEl.style.whiteSpace = "pre-wrap";
+  }
 
   return new Promise((resolve) => {
     let resolved = false;

@@ -29,9 +29,7 @@ export function isTestServer(): boolean {
 }
 
 /** Alias for isTestServer. */
-export function isTestMode(): boolean {
-  return _isTestServer;
-}
+export const isTestMode = isTestServer;
 
 /** Check if cheat automation / evaluation loop is currently paused. */
 export function isCheatEvaluationPaused(): boolean {

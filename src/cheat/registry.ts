@@ -1,4 +1,4 @@
-export type ConfigType = "input" | "label" | "checker" | "radio" | "slider";
+export type ConfigType = "input" | "label" | "checker" | "radio" | "slider" | "button";
 
 export interface ConfigOption {
   type: ConfigType;
@@ -49,6 +49,9 @@ export type SerializedCheatState = Record<string, Array<{ name: string; enabled:
 function builtinCheats(): CheatState {
   return {
     Automation: [
+      new Cheat("Safe mode", "Typewrite input at configured WPM instead of sending instant text chunks.", [
+        { type: "slider", label: "WPM", min: 10, max: 200, value: 60 },
+      ]),
       new Cheat("Autovon", "Auto parse and decode autovon.exe dialup sequence."),
       new Cheat("Porthack", "Auto port guessing / autoporting.", [
         { type: "slider", label: "Speed", min: 1, max: 100, value: 50 },
@@ -62,7 +65,7 @@ function builtinCheats(): CheatState {
     ],
     Game: [
       new Cheat("Sudoku", "Auto solve sudoku puzzles.", [
-        { type: "slider", label: "Speed", min: 1, max: 100, value: 50 },
+        { type: "slider", label: "Speed", min: 100, max: 1000, value: 200 }
       ]),
       new Cheat("2048", "Auto play 2048.", [
         {
@@ -74,12 +77,18 @@ function builtinCheats(): CheatState {
       ]),
       new Cheat("Typespeed", "Auto play typespeed.", [
         { type: "slider", label: "WPM", min: 10, max: 200, value: 60 },
-      ]),
+      ])
     ],
     Misc: [
+      new Cheat("Terminal spoof", "Spoof terminal rows and columns to arbitrary dimensions.", [
+        { type: "input", label: "Rows", value: "24" },
+        { type: "input", label: "Cols", value: "80" },
+        { type: "button", label: "Set to default" },
+      ]),
       new Cheat("Killdozer", "Bulldozer companion trigger and customization.", [
         { type: "slider", label: "Size", min: 20, max: 300, step: 10, value: 100 },
         { type: "slider", label: "Speed", min: 1, max: 20, step: 1, value: 5 },
+        { type: "checker", label: "Random roam", value: false },
       ]),
     ],
   };
@@ -99,9 +108,7 @@ function serialize(state: CheatState): SerializedCheatState {
   return settings;
 }
 
-export function serializeCheatState(state: CheatState): SerializedCheatState {
-  return serialize(state);
-}
+export const serializeCheatState = serialize;
 
 function applySaved(state: CheatState, saved: any): void {
   Object.keys(state).forEach((cat) => {
@@ -119,9 +126,8 @@ function applySaved(state: CheatState, saved: any): void {
     });
   });
 }
-export function applyCheatSettings(state: CheatState, saved: SerializedCheatState): void {
-  applySaved(state, saved);
-}
+
+export const applyCheatSettings = applySaved;
 
 /** Fresh default cheat state: built-ins with persisted defaults applied. */
 export function defaultCheatState(): CheatState {

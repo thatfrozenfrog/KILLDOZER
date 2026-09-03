@@ -46,7 +46,7 @@ export function saveDefaultConnection(config: ConnectionConfig): void {
   );
 }
 
-export function writeToPty(pane: Pane, data: string): void {
+export async function writeToPty(pane: Pane, data: string): Promise<void> {
   if (isTestMode()) {
     if (data === "\r") {
       pane.term.write("\r\n");
@@ -60,7 +60,7 @@ export function writeToPty(pane: Pane, data: string): void {
     return;
   }
   if (pane.state === "connected" && pane.sessionId) {
-    void invoke("async_write_to_pty", {
+    await invoke("async_write_to_pty", {
       sessionId: pane.sessionId,
       data,
     }).catch((e) => console.error("write failed:", e));

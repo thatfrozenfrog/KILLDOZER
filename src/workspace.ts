@@ -12,8 +12,8 @@ import { Pane } from "./pane";
 import { connectShell, disconnectShell, writeToPty } from "./shell";
 import { cloneCheatState, defaultCheatState } from "./cheat/registry";
 import type { CheatState } from "./cheat/registry";
+import { dispatchKey } from "./cheat/pencilgon";
 import { refreshChrome } from "./chrome";
-import { shouldConnectSplitChild } from "./workspace-logic";
 import { isTestMode } from "./test-mode";
 
 export const MIN_PANE_WIDTH = 320;
@@ -179,7 +179,7 @@ export function splitLeaf(tab: Tab, leaf: LeafNode, dir: SplitDirection): Pane |
   tab.focusedLeaf = childLeaf;
   renderTab(tab);
   child.term.focus();
-  if (shouldConnectSplitChild(leaf.pane.state)) {
+  if (leaf.pane.state === "connected") {
     void connectShell(child);
   } else {
     child.showIdle();
@@ -429,28 +429,72 @@ export function renderTabBar(): void {
 // Per-leaf wiring: focus, toolbar actions, application right-click menu
 // ---------------------------------------------------------------------------
 
+function copySelection(pane: Pane): void {
+  const text = pane.term.getSelection();
+  if (text) void navigator.clipboard.writeText(text).catch(() => {});
+}
+
+function pasteClipboard(pane: Pane): void {
+  void navigator.clipboard
+    .readText()
+    .then((text) => {
+      if (text) writeToPty(pane, text.replace(/\r?\n/g, "\r"));
+    })
+    .catch(() => {});
+}
+
 function wireLeaf(tab: Tab, leaf: LeafNode): void {
-  const el = leaf.pane.el;
+  const { pane } = leaf;
 
-  leaf.pane.term.onData((data: string) => writeToPty(leaf.pane, data));
-
-  el.addEventListener("mousedown", (e: MouseEvent) => {
-    if (e.button === 2) {
-      // Right-click always belongs to the app menu, never the remote session.
-      e.stopPropagation();
-      e.preventDefault();
-      return;
-    }
-    focusLeaf(tab, leaf);
-  }, true);
-
-  el.addEventListener("contextmenu", (e: MouseEvent) => {
-    e.preventDefault();
-    focusLeaf(tab, leaf);
-    openPaneMenu(e.clientX, e.clientY, tab, leaf);
+  pane.term.onData((data: string) => {
+    writeToPty(pane, data);
+    dispatchKey(pane, data);
   });
 
-  el.querySelector(".pane-toolbar")?.addEventListener("click", (e: Event) => {
+  pane.term.onBinary((data: string) => {
+    writeToPty(pane, data);
+  });
+
+  pane.term.attachCustomKeyEventHandler((e: KeyboardEvent) => {
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey) {
+      if (e.code === "KeyC" || e.key === "C" || e.key === "c") {
+        if (e.type === "keydown") copySelection(pane);
+        return false;
+      }
+      // Ctrl+Shift+V paste temporarily disabled
+    }
+    return true;
+  });
+
+  pane.el.addEventListener("mousedown", () => focusLeaf(tab, leaf), true);
+
+  pane.termEl.addEventListener("auxclick", (e: MouseEvent) => {
+    if (e.button === 1) {
+      // Middle click: paste clipboard if not in mouse tracking mode (or if Shift is held)
+      if (pane.term.modes.mouseTrackingMode !== "none" && !e.shiftKey) {
+        return;
+      }
+      e.preventDefault();
+      pasteClipboard(pane);
+    }
+  });
+
+  pane.el.addEventListener("contextmenu", (e: MouseEvent) => {
+    const isToolbar = (e.target as HTMLElement | null)?.closest(".pane-toolbar");
+    // If mouse tracking mode is enabled in the terminal app, let the application receive right click
+    if (!isToolbar && pane.term.modes.mouseTrackingMode !== "none" && !e.shiftKey) {
+      return;
+    }
+    e.preventDefault();
+    focusLeaf(tab, leaf);
+    if (e.shiftKey) {
+      pasteClipboard(pane);
+    } else {
+      openPaneMenu(e.clientX, e.clientY, tab, leaf);
+    }
+  });
+
+  pane.el.querySelector(".pane-toolbar")?.addEventListener("click", (e: Event) => {
     const action = (e.target as HTMLElement).dataset?.action;
     if (!action) return;
     e.stopPropagation();
@@ -493,24 +537,8 @@ function openPaneMenu(x: number, y: number, tab: Tab, leaf: LeafNode): void {
   menu.innerHTML = "";
   const pane = leaf.pane;
   const items: Array<[string, () => void] | null> = [
-    [
-      "Copy",
-      () => {
-        const text = pane.term.getSelection();
-        if (text) void navigator.clipboard.writeText(text).catch(() => {});
-      },
-    ],
-    [
-      "Paste",
-      () => {
-        void navigator.clipboard
-          .readText()
-          .then((text) => {
-            if (text) writeToPty(pane, text.replace(/\r?\n/g, "\r"));
-          })
-          .catch(() => {});
-      },
-    ],
+    ["Copy", () => copySelection(pane)],
+    ["Paste", () => pasteClipboard(pane)],
     ["Select All", () => pane.term.selectAll()],
     ["Clear", () => pane.term.clear()],
     null,

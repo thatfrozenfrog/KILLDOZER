@@ -14,7 +14,9 @@ import {
 } from "./workspace";
 import { closeDrawers, setupDrawers } from "./drawers";
 import { setupCheatDrawer } from "./cheat/ui";
-import { cheatsOrchestrator } from "./cheat/pencilgon";
+import * as pencilgon from "./cheat/pencilgon";
+import * as stdin from "./cheat/input";
+import * as stdout from "./cheat/output";
 import { applyScheme, currentScheme, schemes } from "./theme";
 import { loadDefaultConnection } from "./shell";
 import { defaultCheatState } from "./cheat/registry";
@@ -24,6 +26,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { setupUpdater } from "./updater";
 import { initTestMode, setupTestModeOverlay } from "./test-mode";
 import { initDozer } from "./dozer";
+import { setupLatencyMonitoring } from "./latency";
 
 function setupWindowControls(): void {
   const appWindow = getCurrentWindow();
@@ -98,6 +101,7 @@ async function main(): Promise<void> {
   setupUpdater();
   setupTestModeOverlay();
   initDozer();
+  setupLatencyMonitoring();
 
   // First launch tab restores persisted defaults; nothing else is restored.
   createTab(loadDefaultConnection(), defaultCheatState(), true);
@@ -109,7 +113,7 @@ async function main(): Promise<void> {
     }
   });
 
-  void cheatsOrchestrator();
+  void pencilgon.cheatsOrchestrator();
   refreshChrome();
 
   if (DEBUG) {
@@ -117,6 +121,31 @@ async function main(): Promise<void> {
     w.tabs = tabs;
     w.allPanes = allPanes;
     w.getFocusedPane = getFocusedPane;
+    Object.defineProperty(w, "pane", {
+      get: getFocusedPane,
+      configurable: true,
+    });
+    w.stdin = stdin;
+    w.stdout = stdout;
+    w.pencilgon = pencilgon;
+    w.send = (data: string) => {
+      const pane = getFocusedPane();
+      if (pane) return stdin.send(pane, data);
+    };
+    w.type = (data: string, opt?: any) => {
+      const pane = getFocusedPane();
+      if (pane) return stdin.type(pane, data, opt);
+    };
+    w.line = () => {
+      const pane = getFocusedPane();
+      return pane ? stdout.getCurrentLine(pane) : "";
+    };
+    w.th_exec = (command: string, opt?: any) => {
+      const pane = getFocusedPane();
+      if (pane) return stdin.th_exec(pane, command, opt);
+    };
+    w.reloadCheats = pencilgon.reloadCheatModules;
+    w.reloadCheatModules = pencilgon.reloadCheatModules;
   }
 }
 

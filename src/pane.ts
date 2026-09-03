@@ -6,6 +6,7 @@ import type { CheatState } from "./cheat/registry";
 import { currentScheme, xtermTheme } from "./theme";
 import { c } from "./gadget";
 import { isTestMode } from "./test-mode";
+import { dispatchTermChange } from "./cheat/pencilgon";
 
 export const panesBySession = new Map<string, Pane>();
 
@@ -19,6 +20,40 @@ const resizeObserver = new ResizeObserver((entries) => {
 let paneSeq = 0;
 const RESIZE_IPC_THROTTLE_MS = 100;
 
+const URL_REGEX = /https?:\/\/[^\s<>"'{}|\\^`]+[^\s<>"'{}|\\^`.,;:?!]/g;
+
+function registerUrlLinkProvider(term: Terminal): void {
+  term.registerLinkProvider({
+    provideLinks(bufferLineNumber: number, callback: (links: any[] | undefined) => void) {
+      const line = term.buffer.active.getLine(bufferLineNumber - 1);
+      if (!line) {
+        callback(undefined);
+        return;
+      }
+      const text = line.translateToString(true);
+      const links: any[] = [];
+      let match: RegExpExecArray | null;
+      URL_REGEX.lastIndex = 0;
+      while ((match = URL_REGEX.exec(text)) !== null) {
+        const url = match[0];
+        const startX = match.index + 1;
+        const endX = startX + url.length;
+        links.push({
+          range: {
+            start: { x: startX, y: bufferLineNumber },
+            end: { x: endX, y: bufferLineNumber },
+          },
+          text: url,
+          activate: (_e: MouseEvent, uri: string) => {
+            window.open(uri, "_blank");
+          },
+        });
+      }
+      callback(links.length > 0 ? links : undefined);
+    },
+  });
+}
+
 export class Pane {
   readonly id = `pane-${++paneSeq}`;
   sessionId: string | null = null;
@@ -27,6 +62,7 @@ export class Pane {
   busy = false;
   /** belongs to the default profile tab; its edits persist as app defaults */
   isDefault = false;
+  latency: number | null = null;
   connection: ConnectionConfig;
   cheats: CheatState;
   term: Terminal;
@@ -35,6 +71,7 @@ export class Pane {
   termEl: HTMLElement;
   private statusDot: HTMLElement;
   private lastResizeIpc = 0;
+  private termChangeTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(connection: ConnectionConfig, cheats: CheatState) {
     this.connection = connection;
@@ -47,9 +84,14 @@ export class Pane {
       theme: xtermTheme(currentScheme().palette),
       disableStdin: false,
       cursorBlink: true,
+      altClickMovesCursor: true,
+      macOptionClickForcesSelection: true,
+      scrollSensitivity: 1,
+      fastScrollSensitivity: 5,
     });
     this.term.options.convertEol = true;
     this.term.loadAddon(this.fitAddon);
+    registerUrlLinkProvider(this.term);
 
     this.el = document.createElement("div");
     this.el.className = "pane";
@@ -88,6 +130,15 @@ export class Pane {
     this.termEl.tabIndex = 0;
     this.termEl.addEventListener("mousedown", () => this.term.focus());
 
+    this.term.onWriteParsed(() => {
+      if (this.busy || this.state !== "connected") return;
+      if (this.termChangeTimer) clearTimeout(this.termChangeTimer);
+      this.termChangeTimer = setTimeout(() => {
+        this.termChangeTimer = null;
+        dispatchTermChange(this);
+      }, 25);
+    });
+
     paneByTermEl.set(this.termEl, this);
     resizeObserver.observe(this.termEl);
   }
@@ -102,6 +153,9 @@ export class Pane {
 
   setState(state: ConnectionState): void {
     this.state = state;
+    if (state === "disconnected") {
+      this.latency = null;
+    }
     this.statusDot.className = "pane-status-dot " + state;
     const label = this.el.querySelector<HTMLElement>('[data-role="label"]');
     if (label) label.textContent = this.identity();
@@ -116,10 +170,13 @@ export class Pane {
       const now = performance.now();
       if (now - this.lastResizeIpc >= RESIZE_IPC_THROTTLE_MS) {
         this.lastResizeIpc = now;
+        const spoof = this.cheats.Misc?.find((c) => c.name === "Terminal spoof" && c.enabled);
+        const rows = spoof ? Math.max(2, Math.round(Number(spoof.getValue("Rows")) || 24)) : this.term.rows;
+        const cols = spoof ? Math.max(2, Math.round(Number(spoof.getValue("Cols")) || 80)) : this.term.cols;
         void invoke("async_resize_pty", {
           sessionId: this.sessionId,
-          rows: this.term.rows,
-          cols: this.term.cols,
+          rows,
+          cols,
         }).catch(() => {});
       }
     }
@@ -151,6 +208,7 @@ export class Pane {
   }
 
   dispose(): void {
+    if (this.termChangeTimer) clearTimeout(this.termChangeTimer);
     resizeObserver.unobserve(this.termEl);
     paneByTermEl.delete(this.termEl);
     this.term.dispose();

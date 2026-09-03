@@ -7,6 +7,7 @@ import {
   countActive,
   saveDefaultCheats,
 } from "./registry";
+import { dispatchConfigChange, dispatchToggle } from "./pencilgon";
 import { filterCheats, type CheatFilters } from "./filter";
 import { CustomDropdown } from "./dropdown";
 
@@ -74,6 +75,7 @@ function buildCheatCard(pane: Pane, cheat: Cheat): HTMLElement {
 
   toggle.addEventListener("click", () => {
     cheat.enabled = !cheat.enabled;
+    dispatchToggle(pane, cheat, cheat.enabled);
     showToast(cheat.name + (cheat.enabled ? " enabled" : " disabled"));
     persist(pane);
     render(pane);
@@ -96,12 +98,13 @@ function buildCheatCard(pane: Pane, cheat: Cheat): HTMLElement {
   return card;
 }
 
-function createConfigElement(pane: Pane, config: ConfigOption): HTMLElement {
+function createConfigElement(pane: Pane, cheat: Cheat, config: ConfigOption): HTMLElement {
   const wrapper = document.createElement("div");
   wrapper.className = "config-item";
   const label = document.createElement("label");
   label.textContent = config.label;
   const save = () => {
+    dispatchConfigChange(pane, cheat, config.label, config.value);
     persist(pane);
     refreshChrome();
   };
@@ -159,26 +162,26 @@ function createConfigElement(pane: Pane, config: ConfigOption): HTMLElement {
       };
 
       let dragging = false;
-      number.addEventListener("pointerdown", (event) => {
-        dragging = true;
-        number.focus();
-        number.setPointerCapture(event.pointerId);
-        setFromX(event.clientX);
-      });
-      number.addEventListener("pointermove", (event) => {
+      const onMove = (event: PointerEvent) => {
         if (dragging) setFromX(event.clientX);
-      });
-      const stopDragging = (event: PointerEvent) => {
-        dragging = false;
-        if (number.hasPointerCapture(event.pointerId)) number.releasePointerCapture(event.pointerId);
       };
-      number.addEventListener("pointerup", stopDragging);
-      number.addEventListener("pointercancel", stopDragging);
-      rail.addEventListener("pointerdown", (event) => {
-        if (event.target === number) return;
+      const onDown = (event: PointerEvent) => {
+        dragging = true;
+        rail.setPointerCapture(event.pointerId);
         setFromX(event.clientX);
         number.focus();
-      });
+      };
+      const onUp = (event: PointerEvent) => {
+        if (dragging && rail.hasPointerCapture(event.pointerId)) {
+          rail.releasePointerCapture(event.pointerId);
+        }
+        dragging = false;
+      };
+
+      rail.addEventListener("pointerdown", onDown);
+      rail.addEventListener("pointermove", onMove);
+      rail.addEventListener("pointerup", onUp);
+      rail.addEventListener("pointercancel", onUp);
 
       number.oninput = () => {
         if (number.value !== "") sync(number.value);
@@ -254,10 +257,27 @@ function createConfigElement(pane: Pane, config: ConfigOption): HTMLElement {
       label.appendChild(span);
       break;
     }
+    case "button": {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "bar-btn";
+      btn.style.width = "100%";
+      btn.style.marginTop = "6px";
+      btn.textContent = config.label;
+      btn.addEventListener("click", () => {
+        dispatchConfigChange(pane, cheat, config.label, "click");
+      });
+      wrapper.appendChild(btn);
+      return wrapper;
+    }
   }
 
   wrapper.appendChild(label);
   return wrapper;
+}
+
+export function renderCheatDrawer(pane: Pane): void {
+  render(pane);
 }
 
 function render(pane: Pane): void {
@@ -338,7 +358,7 @@ function buildConfigPanel(pane: Pane, category: string, cheat: Cheat): HTMLEleme
   cheat.config?.forEach((config) => {
     const section = document.createElement("section");
     section.className = "cheat-config-section";
-    section.appendChild(createConfigElement(pane, config));
+    section.appendChild(createConfigElement(pane, cheat, config));
     panel.appendChild(section);
   });
   return panel;

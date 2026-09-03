@@ -1,9 +1,12 @@
+import { invoke } from "@tauri-apps/api/core";
 import type { Pane } from "../pane";
 import { writeToPty } from "../shell";
 import { sleep, randint, DEBUG } from "../gadget";
 import * as stdout from "./output";
 
 /** Every writer targets one pane's session. */
+
+export const MAGIC_NUMBER = 31337;
 
 const SPECIAL_KEY_SEQUENCES = {
   Backspace: "\x7F",
@@ -59,12 +62,34 @@ export async function sendkey(
   }
   if (data) {
     if (DEBUG) console.log("Sending key:", JSON.stringify(data));
-    writeToPty(pane, data);
+    await writeToPty(pane, data);
   }
 }
 
-export async function send(pane: Pane, data: string): Promise<void> {
-  writeToPty(pane, data);
+function isSafeMode(pane: Pane): { enabled: boolean; wpm: number } {
+  for (const cat of Object.keys(pane.cheats)) {
+    const cheat = pane.cheats[cat].find((c) => c.name.toLowerCase() === "safe mode");
+    if (cheat?.enabled) {
+      const wpm = Number(cheat.getValue("WPM")) || 60;
+      return { enabled: true, wpm };
+    }
+  }
+  return { enabled: false, wpm: 60 };
+}
+
+export async function send(pane: Pane, data: string, raw = false): Promise<void> {
+  if (!raw && data.length > 0) {
+    const safe = isSafeMode(pane);
+    if (safe.enabled) {
+      const baseDelay = 12000 / Math.max(1, safe.wpm);
+      await type(pane, data, {
+        min: Math.max(5, Math.round(baseDelay * 0.7)),
+        max: Math.max(10, Math.round(baseDelay * 1.3)),
+      });
+      return;
+    }
+  }
+  await writeToPty(pane, data);
 }
 
 function weightedRandom(min: number, max: number, bias = 0.7): number {
@@ -84,7 +109,7 @@ export async function type(
   let momentum = 0;
   for (let i = 0; i < data.length; i++) {
     const chr = data[i];
-    await send(pane, chr);
+    await writeToPty(pane, chr);
     const next = data[i + 1] ?? "";
 
     momentum = /[a-zA-Z0-9]/.test(chr) ? Math.min(momentum + 0.08, 1) : 0;
@@ -98,28 +123,61 @@ export async function type(
   }
 }
 
-/** Executes a Telehack command on a pane and returns its output lines. */
-export async function th_exec(pane: Pane, command: string, lag: number = 100): Promise<Array<string>> {
-  await send(pane, command);
-  await pane.term.write("\u1499");
-  await sendkey(pane, "Enter");
-  await stdout.waitStill(pane, 10000, lag);
-  if (stdout.getLastLines(pane, 1)[0].includes("More")) {
-    while (stdout.getLastLines(pane, 1)[0].includes("More")) {
-      await send(pane, " ");
-      await stdout.waitStill(pane, 10000, lag);
+/** Executes a Telehack command on a pane and returns its output lines without pagination. */
+export async function th_exec(
+  pane: Pane,
+  command: string,
+  lagOrOptions?: number | { lag?: number; timeout?: number }
+): Promise<Array<string>> {
+  const options = typeof lagOrOptions === "number" ? { lag: lagOrOptions } : lagOrOptions;
+  const rtt = pane.latency ?? 100;
+  const effectiveLag = options?.lag ?? Math.min(1500, Math.max(150, Math.round(rtt * 1.3)));
+  const effectiveTimeout = options?.timeout ?? Math.max(30000, rtt * 30);
+
+  const spoof = pane.cheats.Misc?.find((c) => c.name === "Terminal spoof" && c.enabled);
+  const origRows = spoof ? Math.max(2, Math.round(Number(spoof.getValue("Rows")) || 24)) : pane.term.rows;
+  const origCols = spoof ? Math.max(2, Math.round(Number(spoof.getValue("Cols")) || 80)) : pane.term.cols;
+  const origScrollback = pane.term.options.scrollback ?? 1000;
+
+  // Temporarily disable truncation: expand scrollback so xterm does not drop lines,
+  // and spoof rows to MAGIC_NUMBER so remote pager (e.g. --More--) is bypassed.
+  pane.term.options.scrollback = 500_000;
+
+  if (pane.state === "connected" && pane.sessionId) {
+    await invoke("async_resize_pty", {
+      sessionId: pane.sessionId,
+      rows: MAGIC_NUMBER,
+      cols: origCols,
+    }).catch(() => {});
+  }
+
+  try {
+    await send(pane, command);
+    await new Promise<void>((resolve) => pane.term.write("\u1499", resolve));
+    await sendkey(pane, "Enter");
+    await stdout.waitStill(pane, effectiveTimeout, effectiveLag);
+
+    const buffer = pane.term.buffer.active;
+    const cur = buffer.baseY + buffer.cursorY;
+    const lines: string[] = [];
+    for (let i = cur; i >= 0; i--) {
+      const line = buffer.getLine(i);
+      if (line) {
+        const text = line.translateToString(true);
+        if (text.includes("\u1499")) break;
+        lines.unshift(text);
+      }
+    }
+    return lines;
+  } finally {
+    pane.term.options.scrollback = origScrollback;
+    // Restore original dimensions
+    if (pane.state === "connected" && pane.sessionId) {
+      await invoke("async_resize_pty", {
+        sessionId: pane.sessionId,
+        rows: origRows,
+        cols: origCols,
+      }).catch(() => {});
     }
   }
-  const buffer = pane.term.buffer.active;
-  const cur = buffer.baseY + buffer.cursorY;
-  const lines: string[] = [];
-  for (let i = cur; i >= 0; i--) {
-    const line = buffer.getLine(i);
-    if (line) {
-      const text = line.translateToString(true);
-      if (text.includes("\u1499")) break;
-      lines.unshift(text);
-    }
-  }
-  return lines;
 }
