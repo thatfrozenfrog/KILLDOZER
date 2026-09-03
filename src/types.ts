@@ -72,6 +72,10 @@ export interface PtyErrorPayload {
 export interface PtyExitPayload {
   sessionId: string;
 }
+export interface PtyLatencyPayload {
+  sessionId: string;
+  rttMs: number;
+}
 
 export function blankConnection(): ConnectionConfig {
   return {
@@ -84,8 +88,6 @@ export function blankConnection(): ConnectionConfig {
   };
 }
 
-export function cloneConnection(c: ConnectionConfig): ConnectionConfig {
-  return { ...c };
-}
+export const cloneConnection = (c: ConnectionConfig): ConnectionConfig => ({ ...c });
 
 export type { CheatState };

@@ -4,9 +4,11 @@ use portable_pty::{native_pty_system, Child, CommandBuilder, PtyPair, PtySize};
 use serde::Serialize;
 use std::{
     collections::HashMap,
-    io::{BufRead, BufReader, Write},
+    io::{BufRead, BufReader, Read, Write},
+    net::{TcpStream, ToSocketAddrs},
     sync::Arc,
     thread,
+    time::{Duration, Instant},
 };
 use tauri::Emitter;
 
@@ -34,11 +36,102 @@ struct PtyEvent {
     message: Option<String>,
 }
 
+#[derive(Serialize, Clone)]
+struct PtyLatencyEvent {
+    #[serde(rename = "sessionId")]
+    session_id: String,
+    #[serde(rename = "rttMs")]
+    rtt_ms: u64,
+}
+
 fn pty_event(session_id: &str) -> PtyEvent {
     PtyEvent {
         session_id: session_id.to_string(),
         data: None,
         message: None,
+    }
+}
+
+fn measure_latency_sync(
+    host: &str,
+    port: u16,
+    proxy_address: &str,
+    proxy_port: &str,
+    proxy_auth_enabled: bool,
+    proxy_username: &str,
+    proxy_password: &str,
+) -> Option<u64> {
+    let timeout = Duration::from_secs(3);
+    let start = Instant::now();
+
+    if !proxy_port.is_empty() {
+        let proxy_host = if proxy_address.is_empty() {
+            "127.0.0.1"
+        } else {
+            proxy_address
+        };
+        let proxy_addr_str = format!("{}:{}", proxy_host, proxy_port);
+        let proxy_addrs = proxy_addr_str.to_socket_addrs().ok()?.next()?;
+        let mut stream = TcpStream::connect_timeout(&proxy_addrs, timeout).ok()?;
+        let _ = stream.set_read_timeout(Some(timeout));
+        let _ = stream.set_write_timeout(Some(timeout));
+
+        // SOCKS5 Greeting
+        if proxy_auth_enabled && !proxy_username.is_empty() {
+            stream.write_all(&[0x05, 0x02, 0x00, 0x02]).ok()?;
+        } else {
+            stream.write_all(&[0x05, 0x01, 0x00]).ok()?;
+        }
+
+        let mut greeting_resp = [0u8; 2];
+        stream.read_exact(&mut greeting_resp).ok()?;
+        if greeting_resp[0] != 0x05 {
+            return None;
+        }
+
+        if greeting_resp[1] == 0x02 {
+            // Username/password auth
+            let u_bytes = proxy_username.as_bytes();
+            let p_bytes = proxy_password.as_bytes();
+            let mut auth_req = Vec::with_capacity(3 + u_bytes.len() + p_bytes.len());
+            auth_req.push(0x01); // Auth subnegotiation version
+            auth_req.push(u_bytes.len() as u8);
+            auth_req.extend_from_slice(u_bytes);
+            auth_req.push(p_bytes.len() as u8);
+            auth_req.extend_from_slice(p_bytes);
+            stream.write_all(&auth_req).ok()?;
+
+            let mut auth_resp = [0u8; 2];
+            stream.read_exact(&mut auth_resp).ok()?;
+            if auth_resp[1] != 0x00 {
+                return None;
+            }
+        } else if greeting_resp[1] != 0x00 {
+            return None;
+        }
+
+        // SOCKS5 CONNECT request
+        let host_bytes = host.as_bytes();
+        let mut connect_req = Vec::with_capacity(7 + host_bytes.len());
+        connect_req.extend_from_slice(&[0x05, 0x01, 0x00, 0x03]); // CMD=CONNECT, RSV=0, ATYP=DOMAINNAME
+        connect_req.push(host_bytes.len() as u8);
+        connect_req.extend_from_slice(host_bytes);
+        connect_req.extend_from_slice(&port.to_be_bytes());
+        stream.write_all(&connect_req).ok()?;
+
+        // SOCKS5 response header: VER, REP, RSV, ATYP
+        let mut connect_resp = [0u8; 4];
+        stream.read_exact(&mut connect_resp).ok()?;
+        if connect_resp[0] != 0x05 || connect_resp[1] != 0x00 {
+            return None;
+        }
+
+        Some(start.elapsed().as_millis() as u64)
+    } else {
+        let addr_str = format!("{}:{}", host, port);
+        let addrs = addr_str.to_socket_addrs().ok()?.next()?;
+        let _stream = TcpStream::connect_timeout(&addrs, timeout).ok()?;
+        Some(start.elapsed().as_millis() as u64)
     }
 }
 
@@ -167,6 +260,50 @@ async fn create_shell_inner(
             child,
         },
     );
+
+    // Background latency prober: runs every 4s while session is active
+    let prober_sessions = state.sessions.clone();
+    let prober_window = window.clone();
+    let prober_session_id = session_id.clone();
+    let prober_host = host.clone();
+    let prober_port = port.parse::<u16>().unwrap_or(22);
+    let prober_proxy_addr = proxy_address.clone();
+    let prober_proxy_port = proxy_port.clone();
+    let prober_proxy_auth = proxy_auth_enabled;
+    let prober_proxy_user = proxy_username.clone();
+    let prober_proxy_pass = proxy_password.clone();
+
+    thread::spawn(move || {
+        loop {
+            // Check if session still exists in registry
+            if !prober_sessions.blocking_lock().contains_key(&prober_session_id) {
+                break;
+            }
+
+            if let Some(rtt_ms) = measure_latency_sync(
+                &prober_host,
+                prober_port,
+                &prober_proxy_addr,
+                &prober_proxy_port,
+                prober_proxy_auth,
+                &prober_proxy_user,
+                &prober_proxy_pass,
+            ) {
+                if !prober_sessions.blocking_lock().contains_key(&prober_session_id) {
+                    break;
+                }
+                let _ = prober_window.emit(
+                    "pty:latency",
+                    PtyLatencyEvent {
+                        session_id: prober_session_id.clone(),
+                        rtt_ms,
+                    },
+                );
+            }
+
+            thread::sleep(Duration::from_secs(4));
+        }
+    });
 
     // Background reader thread owns the reader; on EOF it removes the
     // registry entry (if still present) and emits pty:exit for this session.

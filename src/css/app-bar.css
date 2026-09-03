@@ -170,3 +170,56 @@
 .dropdown-option-row .dropdown-option { flex: 1; }
 .dropdown-option-action { width: 30px; padding: 0; border: 1px solid transparent; background: transparent; color: var(--accent-brand); cursor: pointer; font: 14px/1 var(--font-mono); }
 .dropdown-option-action:hover, .dropdown-option-action:focus-visible { border-color: var(--border-strong); background: var(--bg-raised); color: var(--fg-emphasis); outline: none; }
+
+.latency-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 68px;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: default;
+  user-select: none;
+  color: var(--fg-muted);
+  border-color: var(--border-hairline);
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.latency-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--fg-muted);
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+  flex-shrink: 0;
+}
+
+.latency-indicator.good {
+  color: var(--status-success);
+  border-color: color-mix(in srgb, var(--status-success) 35%, var(--border-hairline));
+}
+.latency-indicator.good .latency-dot {
+  background: var(--status-success);
+  box-shadow: 0 0 5px var(--status-success);
+}
+
+.latency-indicator.medium {
+  color: var(--status-caution);
+  border-color: color-mix(in srgb, var(--status-caution) 35%, var(--border-hairline));
+}
+.latency-indicator.medium .latency-dot {
+  background: var(--status-caution);
+  box-shadow: 0 0 5px var(--status-caution);
+}
+
+.latency-indicator.poor {
+  color: var(--status-danger);
+  border-color: color-mix(in srgb, var(--status-danger) 35%, var(--border-hairline));
+}
+.latency-indicator.poor .latency-dot {
+  background: var(--status-danger);
+  box-shadow: 0 0 5px var(--status-danger);
+}
+
