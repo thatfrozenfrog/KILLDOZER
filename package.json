@@ -6,6 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "format": "prettier --write . && cargo fmt --manifest-path src-tauri/Cargo.toml && git ls-files -z -- '*.c' '*.cc' '*.cpp' '*.cxx' '*.h' '*.hh' '*.hpp' '*.hxx' | xargs -0 -r clang-format -i",
+    "format:check": "prettier --check . && cargo fmt --manifest-path src-tauri/Cargo.toml -- --check && git ls-files -z -- '*.c' '*.cc' '*.cpp' '*.cxx' '*.h' '*.hh' '*.hpp' '*.hxx' | xargs -0 -r clang-format --dry-run --Werror",
+    "prepare": "git rev-parse --git-dir >/dev/null 2>&1 && git config core.hooksPath .githooks || true",
     "preview": "vite preview",
     "release": "./scripts/release.sh",
     "tauri": "tauri",
@@ -24,7 +27,9 @@
   "devDependencies": {
     "@tauri-apps/cli": "^2.11.4",
     "@types/three": "^0.185.4",
-    "typescript": "^4.9.5",
+    "lint-staged": "^17.5.0",
+    "prettier": "^3.9.6",
+    "typescript": "^7.0.2",
     "vite": "^4.4.3"
   }
 }

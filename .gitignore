@@ -33,3 +33,5 @@ packaging/arch/*
 !packaging/arch/PKGBUILD
 !packaging/arch/killdozer.desktop
 .agents/
+.serena/
+.vscode/

@@ -30,19 +30,30 @@ import { setupLatencyMonitoring } from "./latency";
 
 function setupWindowControls(): void {
   const appWindow = getCurrentWindow();
-  document.querySelectorAll<HTMLButtonElement>("[data-window-action]").forEach((button) => {
-    button.addEventListener("click", () => {
-      const action = button.dataset.windowAction;
-      const operation = action === "minimize" ? appWindow.minimize() : action === "maximize" ? appWindow.toggleMaximize() : appWindow.close();
-      void operation.catch(() => {});
+  document
+    .querySelectorAll<HTMLButtonElement>("[data-window-action]")
+    .forEach((button) => {
+      button.addEventListener("click", () => {
+        const action = button.dataset.windowAction;
+        const operation =
+          action === "minimize"
+            ? appWindow.minimize()
+            : action === "maximize"
+              ? appWindow.toggleMaximize()
+              : appWindow.close();
+        void operation.catch(() => {});
+      });
     });
-  });
-  document.querySelectorAll<HTMLElement>("[data-resize-direction]").forEach((handle) => {
-    handle.addEventListener("pointerdown", () => {
-      const direction = handle.dataset.resizeDirection as Parameters<typeof appWindow.startResizeDragging>[0];
-      void appWindow.startResizeDragging(direction).catch(() => {});
+  document
+    .querySelectorAll<HTMLElement>("[data-resize-direction]")
+    .forEach((handle) => {
+      handle.addEventListener("pointerdown", () => {
+        const direction = handle.dataset.resizeDirection as Parameters<
+          typeof appWindow.startResizeDragging
+        >[0];
+        void appWindow.startResizeDragging(direction).catch(() => {});
+      });
     });
-  });
 }
 
 function setupSchemePicker(): void {
@@ -58,10 +69,15 @@ function setupSchemePicker(): void {
     applyScheme(slug);
     for (const pane of allPanes()) pane.applyTheme();
     picker.textContent = currentScheme().name;
-    menu.querySelectorAll<HTMLButtonElement>(".scheme-option").forEach((option) => {
-      option.classList.toggle("selected", option.dataset.scheme === slug);
-      option.setAttribute("aria-selected", String(option.dataset.scheme === slug));
-    });
+    menu
+      .querySelectorAll<HTMLButtonElement>(".scheme-option")
+      .forEach((option) => {
+        option.classList.toggle("selected", option.dataset.scheme === slug);
+        option.setAttribute(
+          "aria-selected",
+          String(option.dataset.scheme === slug),
+        );
+      });
     closeMenu();
   };
 
@@ -130,11 +146,11 @@ async function main(): Promise<void> {
     w.pencilgon = pencilgon;
     w.send = (data: string) => {
       const pane = getFocusedPane();
-      if (pane) return stdin.send(pane, data);
+      return pane ? stdin.send(pane, data) : undefined;
     };
     w.type = (data: string, opt?: any) => {
       const pane = getFocusedPane();
-      if (pane) return stdin.type(pane, data, opt);
+      return pane ? stdin.type(pane, data, opt) : undefined;
     };
     w.line = () => {
       const pane = getFocusedPane();
@@ -142,7 +158,7 @@ async function main(): Promise<void> {
     };
     w.th_exec = (command: string, opt?: any) => {
       const pane = getFocusedPane();
-      if (pane) return stdin.th_exec(pane, command, opt);
+      return pane ? stdin.th_exec(pane, command, opt) : undefined;
     };
     w.reloadCheats = pencilgon.reloadCheatModules;
     w.reloadCheatModules = pencilgon.reloadCheatModules;
