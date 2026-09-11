@@ -1,5 +1,5 @@
 import type { ITheme } from "@xterm/xterm";
-import schemesData from "./base24/schemes.json";
+import schemesData from "../base24/schemes.json";
 
 export interface Base24Scheme {
   slug: string;

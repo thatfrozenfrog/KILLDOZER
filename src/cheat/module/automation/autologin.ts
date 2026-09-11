@@ -1,4 +1,4 @@
-import type { Pane } from "../../../pane";
+import type { Pane } from "../../../terminal/pane";
 import type { Cheat } from "../../registry";
 import * as stdin from "../../input";
 import * as stdout from "../../output";

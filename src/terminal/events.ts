@@ -5,15 +5,15 @@ import type {
   PtyExitPayload,
   PtyLatencyPayload,
   PtyReadyPayload,
-} from "./types";
+} from "../core/types";
 import { panesBySession } from "./pane";
-import { refreshChrome } from "./chrome";
+import { refreshChrome } from "../ui/chrome";
 import {
   dispatchConnect,
   dispatchData,
   dispatchDisconnect,
-} from "./cheat/pencilgon";
-import { renderLatency } from "./latency";
+} from "../cheat/pencilgon";
+import { renderLatency } from "../ui/latency";
 
 /** One global set of listeners; every event is routed by sessionId. */
 export async function setupEventListeners(): Promise<void> {
@@ -60,7 +60,7 @@ export async function setupEventListeners(): Promise<void> {
     pane.sessionId = null;
     pane.setState("disconnected");
     pane.term.writeln(
-      "\r\n\x1b[31m\u2717 " + event.payload.message + "\x1b[0m\r\n"
+      "\r\n\x1b[31m\u2717 " + event.payload.message + "\x1b[0m\r\n",
     );
     refreshChrome();
     dispatchDisconnect(pane);

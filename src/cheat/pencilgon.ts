@@ -1,8 +1,8 @@
-import type { Pane } from "../pane";
+import type { Pane } from "../terminal/pane";
 import type { Cheat } from "./registry";
-import { allPanes } from "../workspace";
-import { sleep } from "../gadget";
-import { isCheatEvaluationPaused } from "../test-mode";
+import { allPanes } from "../terminal/workspace";
+import { sleep } from "../core/gadget";
+import { isCheatEvaluationPaused } from "../core/test-mode";
 export const INTERVAL = 250; // milliseconds
 
 export interface CheatHandler {

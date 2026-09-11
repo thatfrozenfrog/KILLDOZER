@@ -53,7 +53,7 @@ export function toggleCheatEvaluationPaused(): boolean {
 
 /** Subscribe to pause state changes. */
 export function onCheatEvaluationPauseChange(
-  listener: (paused: boolean) => void
+  listener: (paused: boolean) => void,
 ): () => void {
   pauseListeners.add(listener);
   return () => pauseListeners.delete(listener);
@@ -74,7 +74,9 @@ export function setupTestModeOverlay(): void {
 
   overlay.classList.remove("hidden");
 
-  const toggleBtn = document.getElementById("test-mode-toggle") as HTMLButtonElement | null;
+  const toggleBtn = document.getElementById(
+    "test-mode-toggle",
+  ) as HTMLButtonElement | null;
   const label = overlay.querySelector(".test-mode-label");
 
   const updateUI = (paused: boolean) => {
@@ -97,4 +99,3 @@ export function setupTestModeOverlay(): void {
 
   onCheatEvaluationPauseChange(updateUI);
 }
-

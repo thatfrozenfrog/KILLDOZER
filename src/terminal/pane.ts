@@ -1,12 +1,12 @@
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { invoke } from "@tauri-apps/api/core";
-import type { ConnectionConfig, ConnectionState } from "./types";
-import type { CheatState } from "./cheat/registry";
-import { currentScheme, xtermTheme } from "./theme";
-import { c } from "./gadget";
-import { isTestMode } from "./test-mode";
-import { dispatchTermChange } from "./cheat/pencilgon";
+import type { ConnectionConfig, ConnectionState } from "../core/types";
+import type { CheatState } from "../cheat/registry";
+import { currentScheme, xtermTheme } from "../ui/theme";
+import { c } from "../core/gadget";
+import { isTestMode } from "../core/test-mode";
+import { dispatchTermChange } from "../cheat/pencilgon";
 
 export const panesBySession = new Map<string, Pane>();
 
@@ -24,7 +24,10 @@ const URL_REGEX = /https?:\/\/[^\s<>"'{}|\\^`]+[^\s<>"'{}|\\^`.,;:?!]/g;
 
 function registerUrlLinkProvider(term: Terminal): void {
   term.registerLinkProvider({
-    provideLinks(bufferLineNumber: number, callback: (links: any[] | undefined) => void) {
+    provideLinks(
+      bufferLineNumber: number,
+      callback: (links: any[] | undefined) => void,
+    ) {
       const line = term.buffer.active.getLine(bufferLineNumber - 1);
       if (!line) {
         callback(undefined);
@@ -170,9 +173,15 @@ export class Pane {
       const now = performance.now();
       if (now - this.lastResizeIpc >= RESIZE_IPC_THROTTLE_MS) {
         this.lastResizeIpc = now;
-        const spoof = this.cheats.Misc?.find((c) => c.name === "Terminal spoof" && c.enabled);
-        const rows = spoof ? Math.max(2, Math.round(Number(spoof.getValue("Rows")) || 24)) : this.term.rows;
-        const cols = spoof ? Math.max(2, Math.round(Number(spoof.getValue("Cols")) || 80)) : this.term.cols;
+        const spoof = this.cheats.Misc?.find(
+          (c) => c.name === "Terminal spoof" && c.enabled,
+        );
+        const rows = spoof
+          ? Math.max(2, Math.round(Number(spoof.getValue("Rows")) || 24))
+          : this.term.rows;
+        const cols = spoof
+          ? Math.max(2, Math.round(Number(spoof.getValue("Cols")) || 80))
+          : this.term.cols;
         void invoke("async_resize_pty", {
           sessionId: this.sessionId,
           rows,
@@ -194,16 +203,58 @@ export class Pane {
     if (isTestMode()) return;
     const block =
       "\n" +
-      c("brightYellow", 'M""MMMMM""M') + " " + c("brightCyan", "oo dP dP       dP                                     ") + "\n" +
-      c("brightYellow", "M  MMMM' .M") + " " + c("brightCyan", "   88 88       88                                     ") + "\n" +
-      c("brightYellow", "M       .MM") + " " + c("brightCyan", "dP 88 88 .d888b88 .d8888b. d888888b .d8888b. 88d888b. ") + "\n" +
-      c("brightYellow", "M  MMMb. YM") + " " + c("brightCyan", "88 88 88 88'  `88 88'  `88    .d8P' 88ooood8 88'  `88 ") + "\n" +
-      c("brightYellow", "M  MMMMb  M") + " " + c("brightCyan", "88 88 88 88.  .88 88.  .88  .Y8P    88.  ... 88       ") + "\n" +
-      c("brightYellow", "M  MMMMM  M") + " " + c("brightCyan", "dP dP dP `88888P8 `88888P' d888888P `88888P' dP       ") + "\n" +
-      c("brightYellow", "MMMMMMMMMMM") + "\n";
+      c("brightYellow", 'M""MMMMM""M') +
+      " " +
+      c(
+        "brightCyan",
+        "oo dP dP       dP                                     ",
+      ) +
+      "\n" +
+      c("brightYellow", "M  MMMM' .M") +
+      " " +
+      c(
+        "brightCyan",
+        "   88 88       88                                     ",
+      ) +
+      "\n" +
+      c("brightYellow", "M       .MM") +
+      " " +
+      c(
+        "brightCyan",
+        "dP 88 88 .d888b88 .d8888b. d888888b .d8888b. 88d888b. ",
+      ) +
+      "\n" +
+      c("brightYellow", "M  MMMb. YM") +
+      " " +
+      c(
+        "brightCyan",
+        "88 88 88 88'  `88 88'  `88    .d8P' 88ooood8 88'  `88 ",
+      ) +
+      "\n" +
+      c("brightYellow", "M  MMMMb  M") +
+      " " +
+      c(
+        "brightCyan",
+        "88 88 88 88.  .88 88.  .88  .Y8P    88.  ... 88       ",
+      ) +
+      "\n" +
+      c("brightYellow", "M  MMMMM  M") +
+      " " +
+      c(
+        "brightCyan",
+        "dP dP dP `88888P8 `88888P' d888888P `88888P' dP       ",
+      ) +
+      "\n" +
+      c("brightYellow", "MMMMMMMMMMM") +
+      "\n";
     this.term.write(c("brightCyan", block.replace(/\n/g, "\r\n")));
     this.term.writeln(
-      "\r\n" + c("brightYellow", "\u2192 Disconnected. Open the Connection drawer to dial in.") + "\r\n"
+      "\r\n" +
+        c(
+          "brightYellow",
+          "\u2192 Disconnected. Open the Connection drawer to dial in.",
+        ) +
+        "\r\n",
     );
   }
 

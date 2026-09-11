@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { Pane } from "../pane";
-import { writeToPty } from "../shell";
-import { sleep, randint, DEBUG } from "../gadget";
+import type { Pane } from "../terminal/pane";
+import { writeToPty } from "../terminal/shell";
+import { sleep, randint, DEBUG } from "../core/gadget";
 import * as stdout from "./output";
 
 /** Every writer targets one pane's session. */

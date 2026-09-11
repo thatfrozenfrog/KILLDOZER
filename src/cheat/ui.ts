@@ -1,6 +1,6 @@
-import type { Pane } from "../pane";
-import { getFocusedPane } from "../workspace";
-import { onChromeChange, refreshChrome } from "../chrome";
+import type { Pane } from "../terminal/pane";
+import { getFocusedPane } from "../terminal/workspace";
+import { onChromeChange, refreshChrome } from "../ui/chrome";
 import {
   Cheat,
   ConfigOption,
@@ -64,7 +64,8 @@ function buildCheatCard(pane: Pane, cheat: Cheat): HTMLElement {
     const configure = document.createElement("button");
     configure.type = "button";
     configure.className = "cheat-configure";
-    configure.textContent = configuring === cheat ? "Close config" : "Configure";
+    configure.textContent =
+      configuring === cheat ? "Close config" : "Configure";
     configure.setAttribute("aria-expanded", String(configuring === cheat));
     configure.addEventListener("click", () => {
       configuring = configuring === cheat ? null : cheat;
@@ -88,7 +89,10 @@ function buildCheatCard(pane: Pane, cheat: Cheat): HTMLElement {
     render(pane);
   });
   toggle.addEventListener("keydown", (event) => {
-    if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) {
+    if (
+      event.key === "ContextMenu" ||
+      (event.shiftKey && event.key === "F10")
+    ) {
       event.preventDefault();
       if (!cheat.config?.length) return;
       configuring = cheat;
@@ -98,7 +102,11 @@ function buildCheatCard(pane: Pane, cheat: Cheat): HTMLElement {
   return card;
 }
 
-function createConfigElement(pane: Pane, cheat: Cheat, config: ConfigOption): HTMLElement {
+function createConfigElement(
+  pane: Pane,
+  cheat: Cheat,
+  config: ConfigOption,
+): HTMLElement {
   const wrapper = document.createElement("div");
   wrapper.className = "config-item";
   const label = document.createElement("label");
@@ -147,9 +155,14 @@ function createConfigElement(pane: Pane, cheat: Cheat, config: ConfigOption): HT
         const parsed = Number(raw);
         if (!Number.isFinite(parsed)) return;
         const clamped = Math.min(high, Math.max(low, parsed));
-        const value = Number((low + Math.round((clamped - low) / step) * step).toFixed(6));
+        const value = Number(
+          (low + Math.round((clamped - low) / step) * step).toFixed(6),
+        );
         number.value = String(value);
-        rail.style.setProperty("--value-position", `${((value - low) / (high - low || 1)) * 100}%`);
+        rail.style.setProperty(
+          "--value-position",
+          `${((value - low) / (high - low || 1)) * 100}%`,
+        );
         config.value = value;
         save();
       };
@@ -157,7 +170,10 @@ function createConfigElement(pane: Pane, cheat: Cheat, config: ConfigOption): HT
       const setFromX = (clientX: number) => {
         const rect = rail.getBoundingClientRect();
         if (!rect.width) return;
-        const position = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+        const position = Math.max(
+          0,
+          Math.min(1, (clientX - rect.left) / rect.width),
+        );
         sync(String(low + position * (high - low)));
       };
 
@@ -306,13 +322,15 @@ function render(pane: Pane): void {
     const grid = document.createElement("div");
     grid.className = "cheat-grid";
     const groupCheats = found.filter((item) => item.category === category);
-    groupCheats.forEach(({ cheat }) => grid.appendChild(buildCheatCard(pane, cheat)));
+    groupCheats.forEach(({ cheat }) =>
+      grid.appendChild(buildCheatCard(pane, cheat)),
+    );
     group.append(heading, grid);
     matrix.appendChild(group);
   }
 
   const configured = Object.entries(pane.cheats).find(([, cheats]) =>
-    cheats.some((cheat) => cheat === configuring)
+    cheats.some((cheat) => cheat === configuring),
   );
   if (configured && configuring?.config?.length) {
     const inspector = document.createElement("aside");
@@ -326,7 +344,11 @@ function render(pane: Pane): void {
   root.appendChild(layout);
 }
 
-function buildConfigPanel(pane: Pane, category: string, cheat: Cheat): HTMLElement {
+function buildConfigPanel(
+  pane: Pane,
+  category: string,
+  cheat: Cheat,
+): HTMLElement {
   const panel = document.createElement("section");
   panel.className = "cheat-config-panel";
   const header = document.createElement("div");
@@ -334,7 +356,8 @@ function buildConfigPanel(pane: Pane, category: string, cheat: Cheat): HTMLEleme
   const details = document.createElement("div");
   const eyebrow = document.createElement("div");
   eyebrow.className = "cheat-config-eyebrow";
-  eyebrow.textContent = category + " · " + (cheat.enabled ? "Enabled" : "Disabled");
+  eyebrow.textContent =
+    category + " · " + (cheat.enabled ? "Enabled" : "Disabled");
   const title = document.createElement("h3");
   title.textContent = cheat.name;
   const description = document.createElement("p");
@@ -369,8 +392,11 @@ function updateCategoryFilter(pane: Pane): void {
   const categories = Object.keys(pane.cheats).sort();
   if (!categories.includes(filters.category)) filters.category = "";
   categoryDropdown.setOptions(
-    [{ value: "", text: "All categories" }, ...categories.map((category) => ({ value: category, text: category }))],
-    filters.category
+    [
+      { value: "", text: "All categories" },
+      ...categories.map((category) => ({ value: category, text: category })),
+    ],
+    filters.category,
   );
 }
 
@@ -385,7 +411,7 @@ export function setupCheatDrawer(): void {
   });
   categoryDropdown = new CustomDropdown(
     document.getElementById("cheat-category-filter") as HTMLButtonElement,
-    document.getElementById("cheat-category-menu") as HTMLElement
+    document.getElementById("cheat-category-menu") as HTMLElement,
   );
   categoryDropdown.onSelect((value) => {
     filters.category = value;
@@ -395,7 +421,7 @@ export function setupCheatDrawer(): void {
 
   const statusDropdown = new CustomDropdown(
     document.getElementById("cheat-status-filter") as HTMLButtonElement,
-    document.getElementById("cheat-status-menu") as HTMLElement
+    document.getElementById("cheat-status-menu") as HTMLElement,
   );
   statusDropdown.onSelect((value) => {
     filters.status = value as CheatFilters["status"];
@@ -409,7 +435,7 @@ export function setupCheatDrawer(): void {
       { value: "enabled", text: "Enabled" },
       { value: "disabled", text: "Disabled" },
     ],
-    filters.status
+    filters.status,
   );
 
   onChromeChange(() => {
@@ -429,7 +455,8 @@ function setupDrawerResize(): void {
   const handle = document.getElementById("cheats-drawer-resize");
   if (!drawer || !handle) return;
 
-  const maxDrawerWidth = () => Math.floor(window.innerWidth * MAX_DRAWER_WIDTH_RATIO);
+  const maxDrawerWidth = () =>
+    Math.floor(window.innerWidth * MAX_DRAWER_WIDTH_RATIO);
   const clamp = (width: number) => {
     const max = maxDrawerWidth();
     return Math.min(max, Math.max(Math.min(MIN_DRAWER_WIDTH, max), width));
@@ -446,7 +473,8 @@ function setupDrawerResize(): void {
     event.preventDefault();
     handle.setPointerCapture(event.pointerId);
     drawer.classList.add("resizing");
-    const move = (moveEvent: PointerEvent) => applyWidth(window.innerWidth - moveEvent.clientX);
+    const move = (moveEvent: PointerEvent) =>
+      applyWidth(window.innerWidth - moveEvent.clientX);
     const stop = () => {
       drawer.classList.remove("resizing");
       handle.removeEventListener("pointermove", move);
@@ -463,5 +491,7 @@ function setupDrawerResize(): void {
     const current = drawer.getBoundingClientRect().width;
     applyWidth(current + (event.key === "ArrowLeft" ? 24 : -24));
   });
-  window.addEventListener("resize", () => applyWidth(drawer.getBoundingClientRect().width));
+  window.addEventListener("resize", () =>
+    applyWidth(drawer.getBoundingClientRect().width),
+  );
 }

@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { Pane } from "../../../pane";
+import type { Pane } from "../../../terminal/pane";
 import type { Cheat } from "../../registry";
 import { renderCheatDrawer } from "../../ui";
 
@@ -26,7 +26,12 @@ export function onToggle(pane: Pane, cheat: Cheat, enabled: boolean): void {
   }
 }
 
-export function onConfigChange(pane: Pane, cheat: Cheat, label: string, _value: any): void {
+export function onConfigChange(
+  pane: Pane,
+  cheat: Cheat,
+  label: string,
+  _value: any,
+): void {
   if (label.toLowerCase() === "set to default") {
     const dims = pane.fitAddon.proposeDimensions();
     const rows = dims?.rows && dims.rows >= 2 ? dims.rows : 24;
@@ -36,7 +41,6 @@ export function onConfigChange(pane: Pane, cheat: Cheat, label: string, _value: 
     if (rowsCfg) rowsCfg.value = String(rows);
     const colsCfg = cheat.getConfigByLabel("Cols");
     if (colsCfg) colsCfg.value = String(cols);
-
 
     if (cheat.enabled) {
       applySpoof(pane, cheat);

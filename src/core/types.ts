@@ -1,5 +1,5 @@
-import type { Pane } from "./pane";
-import type { CheatState, SerializedCheatState } from "./cheat/registry";
+import type { Pane } from "../terminal/pane";
+import type { CheatState, SerializedCheatState } from "../cheat/registry";
 
 export const SSH_HOST = "telehack.com";
 export const SSH_PORT = "2222";
@@ -88,6 +88,8 @@ export function blankConnection(): ConnectionConfig {
   };
 }
 
-export const cloneConnection = (c: ConnectionConfig): ConnectionConfig => ({ ...c });
+export const cloneConnection = (c: ConnectionConfig): ConnectionConfig => ({
+  ...c,
+});
 
 export type { CheatState };

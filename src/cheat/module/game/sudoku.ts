@@ -1,8 +1,8 @@
 import * as stdout from "../../output";
 import * as stdin from "../../input";
-import type { Pane } from "../../../pane";
+import type { Pane } from "../../../terminal/pane";
 import type { Cheat } from "../../registry";
-import { sleep } from "../../../gadget";
+import { sleep } from "../../../core/gadget";
 
 export type SudokuMove =
   | "up"
@@ -36,7 +36,10 @@ interface TargetCell extends Point {
 export function parseSudoku(lines: string[]): number[][] {
   return lines
     .map((line) => line.trim())
-    .filter((line) => line.startsWith("|") && !line.includes("-") && !line.includes("="))
+    .filter(
+      (line) =>
+        line.startsWith("|") && !line.includes("-") && !line.includes("="),
+    )
     .slice(0, 9)
     .map((line) => {
       const innerContent = line.replace(/^\|/, "").replace(/\|$/, "");
@@ -54,7 +57,8 @@ export function parseSudoku(lines: string[]): number[][] {
 // 2. Bitmask + MRV Backtracking Solver
 // ---------------------------------------------------------------------------
 
-const getBoxIndex = (r: number, c: number) => Math.floor(r / 3) * 3 + Math.floor(c / 3);
+const getBoxIndex = (r: number, c: number) =>
+  Math.floor(r / 3) * 3 + Math.floor(c / 3);
 
 function countBits(n: number): number {
   let count = 0;
@@ -68,7 +72,11 @@ function countBits(n: number): number {
 
 /** Solves a 9x9 sudoku grid using backtracking with bitmask constraint propagation & MRV. */
 export function solveSudoku(grid: number[][]): number[][] | null {
-  if (!grid || grid.length !== 9 || !grid.every((row) => row && row.length === 9)) {
+  if (
+    !grid ||
+    grid.length !== 9 ||
+    !grid.every((row) => row && row.length === 9)
+  ) {
     return null;
   }
 
@@ -84,8 +92,10 @@ export function solveSudoku(grid: number[][]): number[][] | null {
       if (val > 0) {
         const bit = 1 << val;
         const b = getBoxIndex(r, c);
-        if ((rowMask[r] & bit) || (colMask[c] & bit) || (boxMask[b] & bit)) {
-          console.error(`[sudoku]: Invalid clue conflict at (${r}, ${c}) = ${val}`);
+        if (rowMask[r] & bit || colMask[c] & bit || boxMask[b] & bit) {
+          console.error(
+            `[sudoku]: Invalid clue conflict at (${r}, ${c}) = ${val}`,
+          );
           return null;
         }
         rowMask[r] |= bit;
@@ -264,7 +274,7 @@ function findOptimalPath(start: Point, cells: TargetCell[]): TargetCell[] {
 export function generateOptimalMoves(
   initialGrid: number[][],
   solution: number[][],
-  start: Point = { r: 0, c: 0 }
+  start: Point = { r: 0, c: 0 },
 ): SudokuMove[] {
   const emptyCells: TargetCell[] = [];
   for (let r = 0; r < 9; r++) {
@@ -309,7 +319,7 @@ export function generateOptimalMoves(
 /** High-level helper: solves the grid and returns both solution and optimal move list */
 export function solveSudokuWithMoves(
   grid: number[][],
-  start: Point = { r: 0, c: 0 }
+  start: Point = { r: 0, c: 0 },
 ): { solution: number[][]; moves: SudokuMove[] } | null {
   const solution = solveSudoku(grid);
   if (!solution) return null;
@@ -321,7 +331,11 @@ export function solveSudokuWithMoves(
 // 5. Execution & Cheat Automation
 // ---------------------------------------------------------------------------
 
-export async function executeMoves(pane: Pane, moves: SudokuMove[], delayMs = 30): Promise<void> {
+export async function executeMoves(
+  pane: Pane,
+  moves: SudokuMove[],
+  delayMs = 30,
+): Promise<void> {
   for (const move of moves) {
     if (move === "up") await stdin.sendkey(pane, "Up");
     else if (move === "down") await stdin.sendkey(pane, "Down");
@@ -333,7 +347,11 @@ export async function executeMoves(pane: Pane, moves: SudokuMove[], delayMs = 30
   }
 }
 
-async function triggerSolve(pane: Pane, cheat: Cheat, lines?: string[]): Promise<void> {
+async function triggerSolve(
+  pane: Pane,
+  cheat: Cheat,
+  lines?: string[],
+): Promise<void> {
   if (pane.busy || pane.state !== "connected") return;
 
   const boardLines = lines ?? stdout.getViewport(pane);
@@ -356,7 +374,9 @@ async function triggerSolve(pane: Pane, cheat: Cheat, lines?: string[]): Promise
       return;
     }
 
-    console.log(`[sudoku]: Solved! Executing ${result.moves.length} optimal moves...`);
+    console.log(
+      `[sudoku]: Solved! Executing ${result.moves.length} optimal moves...`,
+    );
     const speed = Number(cheat.getValue("Speed")) || 200; // delay in milliseconds
 
     await executeMoves(pane, result.moves, speed);
@@ -370,7 +390,7 @@ export async function onConfigChange(
   pane: Pane,
   cheat: Cheat,
   label: string,
-  value: any
+  value: any,
 ): Promise<void> {
   if (label === "Auto Solve" && value === true) {
     console.log("[sudoku]: Auto Solve triggered via config change");

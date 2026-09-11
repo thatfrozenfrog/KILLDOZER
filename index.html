@@ -1,31 +1,103 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta charset="UTF-8" />
     <title>Killdozer</title>
     <link rel="stylesheet" href="/src/css/styles.css" />
-    <script type="module" src="/src/main.ts"></script>
+    <script type="module" src="/src/app/main.ts"></script>
   </head>
   <body>
     <header id="app-bar" data-tauri-drag-region="deep">
-      <div id="app-title">KILLDOZER <span class="version" id="app-version"></span><span id="app-outdated" class="outdated hidden">(outdated) DOCTOOOOOOOOOOOOOS</span></div>
+      <div id="app-title">
+        KILLDOZER <span class="version" id="app-version"></span
+        ><span id="app-outdated" class="outdated hidden"
+          >(outdated) DOCTOOOOOOOOOOOOOS</span
+        >
+      </div>
       <span class="spacer"></span>
       <div class="scheme-control" data-tauri-drag-region="false">
-        <button id="scheme-picker" class="bar-control" type="button" title="Base24 color scheme" aria-label="Color scheme" aria-haspopup="listbox" aria-expanded="false"></button>
-        <div id="scheme-menu" class="scheme-menu hidden" role="listbox" aria-label="Base24 color scheme"></div>
+        <button
+          id="scheme-picker"
+          class="bar-control"
+          type="button"
+          title="Base24 color scheme"
+          aria-label="Color scheme"
+          aria-haspopup="listbox"
+          aria-expanded="false"
+        ></button>
+        <div
+          id="scheme-menu"
+          class="scheme-menu hidden"
+          role="listbox"
+          aria-label="Base24 color scheme"
+        ></div>
       </div>
-      <button id="check-for-updates" class="bar-btn" data-tauri-drag-region="false" title="Check for updates">Check for updates</button>
-      <div id="latency-indicator" class="bar-control latency-indicator hidden" data-tauri-drag-region="false" title="Latency to host">
+      <button
+        id="check-for-updates"
+        class="bar-btn"
+        data-tauri-drag-region="false"
+        title="Check for updates"
+      >
+        Check for updates
+      </button>
+      <div
+        id="latency-indicator"
+        class="bar-control latency-indicator hidden"
+        data-tauri-drag-region="false"
+        title="Latency to host"
+      >
         <span class="latency-dot"></span>
         <span id="latency-value">-- ms</span>
       </div>
-      <button id="toggle-connection" class="bar-btn" data-tauri-drag-region="false" title="Connection drawer">Connection</button>
-      <button id="toggle-cheats" class="bar-btn" data-tauri-drag-region="false" title="Cheats drawer">Cheats</button>
-      <div id="window-controls" data-tauri-drag-region="false" aria-label="Window controls">
-        <button class="window-control" data-window-action="minimize" type="button" aria-label="Minimize" title="Minimize">−</button>
-        <button class="window-control" data-window-action="maximize" type="button" aria-label="Maximize" title="Maximize">□</button>
-        <button class="window-control close" data-window-action="close" type="button" aria-label="Close" title="Close">×</button>
+      <button
+        id="toggle-connection"
+        class="bar-btn"
+        data-tauri-drag-region="false"
+        title="Connection drawer"
+      >
+        Connection
+      </button>
+      <button
+        id="toggle-cheats"
+        class="bar-btn"
+        data-tauri-drag-region="false"
+        title="Cheats drawer"
+      >
+        Cheats
+      </button>
+      <div
+        id="window-controls"
+        data-tauri-drag-region="false"
+        aria-label="Window controls"
+      >
+        <button
+          class="window-control"
+          data-window-action="minimize"
+          type="button"
+          aria-label="Minimize"
+          title="Minimize"
+        >
+          −
+        </button>
+        <button
+          class="window-control"
+          data-window-action="maximize"
+          type="button"
+          aria-label="Maximize"
+          title="Maximize"
+        >
+          □
+        </button>
+        <button
+          class="window-control close"
+          data-window-action="close"
+          type="button"
+          aria-label="Close"
+          title="Close"
+        >
+          ×
+        </button>
       </div>
     </header>
 
@@ -33,20 +105,47 @@
 
     <main id="workspace">
       <div id="dozer-layer" class="dozer-layer"></div>
-      <button id="dozer-rtx-toggle" class="dozer-rtx-btn hidden" type="button" title="Toggle 2D / 3D Bulldozer">RTX: ON</button>
+      <button
+        id="dozer-rtx-toggle"
+        class="dozer-rtx-btn hidden"
+        type="button"
+        title="Toggle 2D / 3D Bulldozer"
+      >
+        RTX: ON
+      </button>
     </main>
 
     <aside id="connection-drawer" class="drawer left" aria-label="Connection">
       <div class="drawer-title">SSH Connection</div>
       <div class="drawer-target">telehack.com:2222</div>
       <div class="profile-control">
-        <label class="form-label" for="profile-picker"><span class="form-label-text">Saved profile</span></label>
+        <label class="form-label" for="profile-picker"
+          ><span class="form-label-text">Saved profile</span></label
+        >
         <div class="dropdown-control">
-          <button id="profile-picker" class="filter-btn" type="button" aria-label="Saved connection profile" aria-haspopup="listbox" aria-expanded="false">Choose a profile</button>
-          <div id="profile-menu" class="dropdown-menu hidden" role="listbox" aria-label="Saved connection profile"></div>
+          <button
+            id="profile-picker"
+            class="filter-btn"
+            type="button"
+            aria-label="Saved connection profile"
+            aria-haspopup="listbox"
+            aria-expanded="false"
+          >
+            Choose a profile
+          </button>
+          <div
+            id="profile-menu"
+            class="dropdown-menu hidden"
+            role="listbox"
+            aria-label="Saved connection profile"
+          ></div>
         </div>
       </div>
-      <form id="connection-form" class="connection-form" onsubmit="return false">
+      <form
+        id="connection-form"
+        class="connection-form"
+        onsubmit="return false;"
+      >
         <label class="form-label">
           <span class="form-label-text">Username</span>
           <input type="text" id="username" value="guest" autocomplete="off" />
@@ -54,12 +153,22 @@
 
         <label class="form-label">
           <span class="form-label-text">Proxy IP (optional)</span>
-          <input type="text" id="proxy-ip" placeholder="e.g., 127.0.0.1" autocomplete="off" />
+          <input
+            type="text"
+            id="proxy-ip"
+            placeholder="e.g., 127.0.0.1"
+            autocomplete="off"
+          />
         </label>
 
         <label class="form-label">
           <span class="form-label-text">Proxy Port (optional)</span>
-          <input type="text" id="proxy-port" placeholder="e.g., 9050" autocomplete="off" />
+          <input
+            type="text"
+            id="proxy-port"
+            placeholder="e.g., 9050"
+            autocomplete="off"
+          />
         </label>
 
         <label class="form-label checkbox-label">
@@ -70,40 +179,101 @@
         <div id="proxy-auth-fields" class="proxy-auth-fields hidden">
           <label class="form-label">
             <span class="form-label-text">Proxy username</span>
-            <input type="text" id="proxy-username" placeholder="Proxy username" autocomplete="off" />
+            <input
+              type="text"
+              id="proxy-username"
+              placeholder="Proxy username"
+              autocomplete="off"
+            />
           </label>
 
           <label class="form-label">
             <span class="form-label-text">Proxy password</span>
-            <input type="password" id="proxy-password" placeholder="Proxy password" autocomplete="off" />
+            <input
+              type="password"
+              id="proxy-password"
+              placeholder="Proxy password"
+              autocomplete="off"
+            />
           </label>
-          <p class="plaintext-note">Proxy password is stored in plaintext in local storage.</p>
+          <p class="plaintext-note">
+            Proxy password is stored in plaintext in local storage.
+          </p>
         </div>
 
         <button type="button" id="connect-btn">Connect</button>
-        <button type="button" id="disconnect-btn" class="danger" disabled>Disconnect</button>
-        <button type="button" id="save-profile-btn" disabled>Save profile</button>
+        <button type="button" id="disconnect-btn" class="danger" disabled>
+          Disconnect
+        </button>
+        <button type="button" id="save-profile-btn" disabled>
+          Save profile
+        </button>
       </form>
 
       <div class="statusbar" id="status">
         <hr />
         <span id="status-text">Disconnected</span>
-        <p class="plaintext-note">Saved profile proxy passwords are stored in plaintext in local storage.</p>
+        <p class="plaintext-note">
+          Saved profile proxy passwords are stored in plaintext in local
+          storage.
+        </p>
       </div>
     </aside>
 
     <aside id="cheats-drawer" class="drawer right" aria-label="Cheats">
-      <div id="cheats-drawer-resize" class="cheats-drawer-resize" role="separator" aria-orientation="vertical" aria-label="Resize cheats drawer" tabindex="0" title="Drag to resize"></div>
+      <div
+        id="cheats-drawer-resize"
+        class="cheats-drawer-resize"
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Resize cheats drawer"
+        tabindex="0"
+        title="Drag to resize"
+      ></div>
       <div class="cheats-drawer-scroll">
         <div id="cheat-header">
-          <input type="search" id="search" placeholder="Search cheats" autocomplete="off" aria-label="Search cheats" />
+          <input
+            type="search"
+            id="search"
+            placeholder="Search cheats"
+            autocomplete="off"
+            aria-label="Search cheats"
+          />
           <div class="dropdown-control">
-            <button id="cheat-category-filter" class="filter-btn" type="button" aria-label="Cheat category" aria-haspopup="listbox" aria-expanded="false">All categories</button>
-            <div id="cheat-category-menu" class="dropdown-menu hidden" role="listbox" aria-label="Cheat category"></div>
+            <button
+              id="cheat-category-filter"
+              class="filter-btn"
+              type="button"
+              aria-label="Cheat category"
+              aria-haspopup="listbox"
+              aria-expanded="false"
+            >
+              All categories
+            </button>
+            <div
+              id="cheat-category-menu"
+              class="dropdown-menu hidden"
+              role="listbox"
+              aria-label="Cheat category"
+            ></div>
           </div>
           <div class="dropdown-control">
-            <button id="cheat-status-filter" class="filter-btn" type="button" aria-label="Cheat status" aria-haspopup="listbox" aria-expanded="false">All states</button>
-            <div id="cheat-status-menu" class="dropdown-menu hidden" role="listbox" aria-label="Cheat status"></div>
+            <button
+              id="cheat-status-filter"
+              class="filter-btn"
+              type="button"
+              aria-label="Cheat status"
+              aria-haspopup="listbox"
+              aria-expanded="false"
+            >
+              All states
+            </button>
+            <div
+              id="cheat-status-menu"
+              class="dropdown-menu hidden"
+              role="listbox"
+              aria-label="Cheat status"
+            ></div>
           </div>
           <span id="active-count"></span>
         </div>
@@ -112,45 +282,95 @@
     </aside>
 
     <div id="window-resize-handles" aria-hidden="true">
-      <div class="window-resize-handle north" data-resize-direction="North"></div>
-      <div class="window-resize-handle south" data-resize-direction="South"></div>
+      <div
+        class="window-resize-handle north"
+        data-resize-direction="North"
+      ></div>
+      <div
+        class="window-resize-handle south"
+        data-resize-direction="South"
+      ></div>
       <div class="window-resize-handle east" data-resize-direction="East"></div>
       <div class="window-resize-handle west" data-resize-direction="West"></div>
-      <div class="window-resize-handle north-west" data-resize-direction="NorthWest"></div>
-      <div class="window-resize-handle north-east" data-resize-direction="NorthEast"></div>
-      <div class="window-resize-handle south-west" data-resize-direction="SouthWest"></div>
-      <div class="window-resize-handle south-east" data-resize-direction="SouthEast"></div>
+      <div
+        class="window-resize-handle north-west"
+        data-resize-direction="NorthWest"
+      ></div>
+      <div
+        class="window-resize-handle north-east"
+        data-resize-direction="NorthEast"
+      ></div>
+      <div
+        class="window-resize-handle south-west"
+        data-resize-direction="SouthWest"
+      ></div>
+      <div
+        class="window-resize-handle south-east"
+        data-resize-direction="SouthEast"
+      ></div>
     </div>
 
     <div id="pane-menu" class="hidden" role="menu"></div>
 
-    <dialog id="profile-dialog" class="profile-dialog" aria-labelledby="profile-dialog-title">
+    <dialog
+      id="profile-dialog"
+      class="profile-dialog"
+      aria-labelledby="profile-dialog-title"
+    >
       <form id="profile-dialog-form" method="dialog" novalidate>
-        <div class="profile-dialog-title" id="profile-dialog-title">Save connection profile</div>
-        <p class="profile-dialog-copy">Save this pane’s current connection settings for later.</p>
+        <div class="profile-dialog-title" id="profile-dialog-title">
+          Save connection profile
+        </div>
+        <p class="profile-dialog-copy">
+          Save this pane’s current connection settings for later.
+        </p>
         <label class="form-label" for="profile-name">
           <span class="form-label-text">Profile name</span>
           <input id="profile-name" type="text" autocomplete="off" required />
         </label>
-        <p id="profile-dialog-message" class="profile-dialog-message" role="alert"></p>
+        <p
+          id="profile-dialog-message"
+          class="profile-dialog-message"
+          role="alert"
+        ></p>
         <div class="profile-dialog-actions">
           <button type="button" id="profile-dialog-cancel">Cancel</button>
           <button type="submit" id="profile-dialog-save">Save profile</button>
         </div>
       </form>
     </dialog>
-    <dialog id="confirm-dialog" class="profile-dialog confirm-dialog" aria-labelledby="confirm-dialog-title">
+    <dialog
+      id="confirm-dialog"
+      class="profile-dialog confirm-dialog"
+      aria-labelledby="confirm-dialog-title"
+    >
       <form id="confirm-dialog-form" method="dialog">
-        <div class="profile-dialog-title" id="confirm-dialog-title">Confirm</div>
-        <p id="confirm-dialog-message" class="profile-dialog-copy">Are you sure?</p>
+        <div class="profile-dialog-title" id="confirm-dialog-title">
+          Confirm
+        </div>
+        <p id="confirm-dialog-message" class="profile-dialog-copy">
+          Are you sure?
+        </p>
         <div class="profile-dialog-actions">
           <button type="button" id="confirm-dialog-cancel">Cancel</button>
-          <button type="submit" id="confirm-dialog-confirm" class="primary">Save</button>
+          <button type="submit" id="confirm-dialog-confirm" class="primary">
+            Save
+          </button>
         </div>
       </form>
     </dialog>
-    <div id="test-mode-overlay" class="test-mode-overlay hidden" aria-label="Test Mode Controls">
-      <button id="test-mode-toggle" class="test-mode-toggle" type="button" aria-pressed="false" title="Toggle cheat loop execution">
+    <div
+      id="test-mode-overlay"
+      class="test-mode-overlay hidden"
+      aria-label="Test Mode Controls"
+    >
+      <button
+        id="test-mode-toggle"
+        class="test-mode-toggle"
+        type="button"
+        aria-pressed="false"
+        title="Toggle cheat loop execution"
+      >
         <span class="test-mode-indicator" aria-hidden="true"></span>
         <span class="test-mode-label">TEST MODE: RUNNING</span>
       </button>

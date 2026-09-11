@@ -1,11 +1,11 @@
-import type { Pane } from "../pane";
+import type { Pane } from "../terminal/pane";
 
 /** Every reader operates on one pane's terminal buffer. */
 
 export function getLogicalLines(
   pane: Pane,
   startRow = 0,
-  endRow?: number
+  endRow?: number,
 ): string[] {
   if (!pane.term?.buffer?.active) {
     return [];
@@ -55,16 +55,18 @@ export async function waitFor(
   query: string | RegExp,
   timeout?: number,
   lineCount: number = 1,
-  pollInterval?: number
+  pollInterval?: number,
 ): Promise<boolean> {
   const rtt = pane.latency ?? 100;
   const effectiveTimeout = timeout ?? Math.max(10000, rtt * 15);
-  const interval = pollInterval ?? Math.min(600, Math.max(100, Math.round(rtt * 0.8)));
+  const interval =
+    pollInterval ?? Math.min(600, Math.max(100, Math.round(rtt * 0.8)));
 
   const startTime = Date.now();
   const matcher =
     typeof query === "string"
-      ? (lines: string[]) => lines.some((line) => line.includes(query as string))
+      ? (lines: string[]) =>
+          lines.some((line) => line.includes(query as string))
       : (lines: string[]) => lines.some((line) => (query as RegExp).test(line));
   while (Date.now() - startTime < effectiveTimeout) {
     if (matcher(getLastLines(pane, lineCount))) return true;
@@ -76,12 +78,13 @@ export async function waitFor(
 export async function waitStill(
   pane: Pane,
   timeout?: number,
-  pollInterval?: number
+  pollInterval?: number,
 ): Promise<boolean> {
   const rtt = pane.latency ?? 100;
   const effectiveTimeout = timeout ?? Math.max(10000, rtt * 15);
   // Interval dynamically scales with RTT to avoid premature cutoffs on jittery/slow proxies
-  const interval = pollInterval ?? Math.min(1500, Math.max(200, Math.round(rtt * 1.5)));
+  const interval =
+    pollInterval ?? Math.min(1500, Math.max(200, Math.round(rtt * 1.5)));
 
   const startTime = Date.now();
   const firstBuffer = getViewport(pane);

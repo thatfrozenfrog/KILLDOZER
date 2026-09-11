@@ -50,14 +50,17 @@ export class CustomDropdown {
 
   constructor(
     private readonly button: HTMLButtonElement,
-    private readonly menu: HTMLElement
+    private readonly menu: HTMLElement,
   ) {
     button.addEventListener("click", () => this.toggle());
     button.addEventListener("keydown", (event) => {
       if (event.key === "Escape") this.close();
     });
     document.addEventListener("pointerdown", (event) => {
-      if (!button.contains(event.target as Node) && !menu.contains(event.target as Node)) {
+      if (
+        !button.contains(event.target as Node) &&
+        !menu.contains(event.target as Node)
+      ) {
         this.close();
       }
     });
@@ -77,13 +80,19 @@ export class CustomDropdown {
       item.dataset.value = option.value;
       item.textContent = option.text;
       if (option.tooltip) {
-        item.addEventListener("pointerenter", () => showTooltip(item, option.tooltip!));
+        item.addEventListener("pointerenter", () =>
+          showTooltip(item, option.tooltip!),
+        );
         item.addEventListener("pointerleave", hideTooltip);
-        item.addEventListener("focus", () => showTooltip(item, option.tooltip!));
+        item.addEventListener("focus", () =>
+          showTooltip(item, option.tooltip!),
+        );
         item.addEventListener("blur", hideTooltip);
       }
       item.addEventListener("click", () => this.select(option.value));
-      item.addEventListener("pointerenter", () => this.previewHandler?.(option.value));
+      item.addEventListener("pointerenter", () =>
+        this.previewHandler?.(option.value),
+      );
       item.addEventListener("focus", () => this.previewHandler?.(option.value));
       row.appendChild(item);
       if (option.onAction) {
@@ -126,12 +135,16 @@ export class CustomDropdown {
 
   private sync(): void {
     const option = this.options.find((item) => item.value === this.selected);
-    this.button.textContent = option ? option.text : this.options[0]?.text ?? "";
-    this.menu.querySelectorAll<HTMLButtonElement>(".dropdown-option").forEach((item) => {
-      const on = item.dataset.value === this.selected;
-      item.classList.toggle("selected", on);
-      item.setAttribute("aria-selected", String(on));
-    });
+    this.button.textContent = option
+      ? option.text
+      : (this.options[0]?.text ?? "");
+    this.menu
+      .querySelectorAll<HTMLButtonElement>(".dropdown-option")
+      .forEach((item) => {
+        const on = item.dataset.value === this.selected;
+        item.classList.toggle("selected", on);
+        item.setAttribute("aria-selected", String(on));
+      });
   }
 
   private toggle(): void {

@@ -1,13 +1,13 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
-import dozerImg from "./img/dozer.png";
-import { allPanes, getFocusedPane } from "./workspace";
-import { onChromeChange } from "./chrome";
-import { isTestMode } from "./test-mode";
-import type { Cheat } from "./cheat/registry";
+import dozerImg from "../img/dozer.png";
+import { allPanes, getFocusedPane } from "../terminal/workspace";
+import { onChromeChange } from "../ui/chrome";
+import { isTestMode } from "../core/test-mode";
+import type { Cheat } from "../cheat/registry";
 
-const dozerGlbUrl = new URL("./img/dozer.glb", import.meta.url).href;
+const dozerGlbUrl = new URL("../img/dozer.glb", import.meta.url).href;
 const STORAGE_KEY = "killdozer-rtx";
 const SPEED_2D = 2.5;
 const SPEED_3D = 0.08;
@@ -30,7 +30,13 @@ interface Point2D {
   y: number;
 }
 
-function getBezierPoint(p0: Point2D, p1: Point2D, p2: Point2D, p3: Point2D, t: number): Point2D {
+function getBezierPoint(
+  p0: Point2D,
+  p1: Point2D,
+  p2: Point2D,
+  p3: Point2D,
+  t: number,
+): Point2D {
   const u = 1 - t;
   const tt = t * t;
   const uu = u * u;
@@ -43,7 +49,13 @@ function getBezierPoint(p0: Point2D, p1: Point2D, p2: Point2D, p3: Point2D, t: n
   };
 }
 
-function getBezierLength(p0: Point2D, p1: Point2D, p2: Point2D, p3: Point2D, samples = 12): number {
+function getBezierLength(
+  p0: Point2D,
+  p1: Point2D,
+  p2: Point2D,
+  p3: Point2D,
+  samples = 12,
+): number {
   let len = 0;
   let prev = p0;
   for (let i = 1; i <= samples; i++) {
@@ -110,7 +122,9 @@ export class DozerManager {
     }
     this.layerEl = layer;
 
-    this.rtxBtn = document.getElementById("dozer-rtx-toggle") as HTMLButtonElement | null;
+    this.rtxBtn = document.getElementById(
+      "dozer-rtx-toggle",
+    ) as HTMLButtonElement | null;
     const savedRtx = localStorage.getItem(STORAGE_KEY);
     this.isRtx = savedRtx !== "false";
 
@@ -189,7 +203,7 @@ export class DozerManager {
         this.scene.add(root);
       },
       undefined,
-      (err) => console.error("Failed to load dozer.glb:", err)
+      (err) => console.error("Failed to load dozer.glb:", err),
     );
   }
 
@@ -278,8 +292,14 @@ export class DozerManager {
     const dozerH = 180 * sizeMult;
 
     // 2D target
-    this.targetX2D = Math.max(0, Math.min(rect.width - dozerW, pixelX - dozerW / 2));
-    this.targetY2D = Math.max(0, Math.min(rect.height - dozerH, pixelY - dozerH / 2));
+    this.targetX2D = Math.max(
+      0,
+      Math.min(rect.width - dozerW, pixelX - dozerW / 2),
+    );
+    this.targetY2D = Math.max(
+      0,
+      Math.min(rect.height - dozerH, pixelY - dozerH / 2),
+    );
 
     // 3D raycast to 3D ground plane
     if (rect.width > 0 && rect.height > 0) {
@@ -342,8 +362,14 @@ export class DozerManager {
 
       // P1 extends along incoming tangent v0
       const p1: Point2D = {
-        x: Math.max(minX * 0.5, Math.min(rect.width - minX * 0.5, p0.x + v0.x * ctrlDist)),
-        y: Math.max(minY * 0.5, Math.min(rect.height - minY * 0.5, p0.y + v0.y * ctrlDist)),
+        x: Math.max(
+          minX * 0.5,
+          Math.min(rect.width - minX * 0.5, p0.x + v0.x * ctrlDist),
+        ),
+        y: Math.max(
+          minY * 0.5,
+          Math.min(rect.height - minY * 0.5, p0.y + v0.y * ctrlDist),
+        ),
       };
 
       // Destination incoming direction v1
@@ -352,12 +378,21 @@ export class DozerManager {
       const baseAngle = Math.atan2(toP3Y, toP3X);
       const deflect = (Math.random() - 0.5) * 0.8;
       const targetAngle = baseAngle + deflect;
-      const v1: Point2D = { x: Math.cos(targetAngle), y: Math.sin(targetAngle) };
+      const v1: Point2D = {
+        x: Math.cos(targetAngle),
+        y: Math.sin(targetAngle),
+      };
 
       // P2 arrives at p3 along v1
       const p2: Point2D = {
-        x: Math.max(minX * 0.5, Math.min(rect.width - minX * 0.5, p3.x - v1.x * ctrlDist)),
-        y: Math.max(minY * 0.5, Math.min(rect.height - minY * 0.5, p3.y - v1.y * ctrlDist)),
+        x: Math.max(
+          minX * 0.5,
+          Math.min(rect.width - minX * 0.5, p3.x - v1.x * ctrlDist),
+        ),
+        y: Math.max(
+          minY * 0.5,
+          Math.min(rect.height - minY * 0.5, p3.y - v1.y * ctrlDist),
+        ),
       };
 
       const length = getBezierLength(p0, p1, p2, p3);
@@ -409,7 +444,7 @@ export class DozerManager {
         currentSeg.p1,
         currentSeg.p2,
         currentSeg.p3,
-        evalT
+        evalT,
       );
     } else if (this.bezierSegments.length > 1) {
       const nextSeg = this.bezierSegments[1];
@@ -419,7 +454,7 @@ export class DozerManager {
         nextSeg.p1,
         nextSeg.p2,
         nextSeg.p3,
-        nextT
+        nextT,
       );
     } else {
       targetPt = currentSeg.p3;
@@ -501,7 +536,10 @@ export class DozerManager {
 
       // 360-degree heading direction on 3D ground plane (native front is -X)
       const targetYaw = Math.atan2(dz, -dx);
-      const diff = Math.atan2(Math.sin(targetYaw - this.currentYaw), Math.cos(targetYaw - this.currentYaw));
+      const diff = Math.atan2(
+        Math.sin(targetYaw - this.currentYaw),
+        Math.cos(targetYaw - this.currentYaw),
+      );
       this.currentYaw += diff * 0.12;
 
       // Continuous damping factor eliminates abrupt step snapping
@@ -516,7 +554,11 @@ export class DozerManager {
     this.currentRoll += (targetRoll - this.currentRoll) * 0.15;
 
     this.modelRoot.position.set(this.modelPos.x, bumpY, this.modelPos.z);
-    this.modelRoot.rotation.set(this.currentPitch, this.currentYaw, this.currentRoll);
+    this.modelRoot.rotation.set(
+      this.currentPitch,
+      this.currentYaw,
+      this.currentRoll,
+    );
 
     if (this.renderer) {
       this.renderer.render(this.scene, this.camera);

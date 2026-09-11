@@ -1,4 +1,4 @@
-import { getFocusedPane } from "./workspace";
+import { getFocusedPane } from "../terminal/workspace";
 import { onChromeChange } from "./chrome";
 
 export function renderLatency(): void {

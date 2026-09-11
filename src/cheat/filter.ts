@@ -16,7 +16,7 @@ function fuzzyMatch(text: string, query: string): boolean {
 
 export function filterCheats<T extends CheatLike>(
   cheats: Record<string, T[]>,
-  filters: CheatFilters
+  filters: CheatFilters,
 ): Array<{ category: string; cheat: T }> {
   const query = filters.query.trim();
   return Object.keys(cheats)
@@ -27,10 +27,14 @@ export function filterCheats<T extends CheatLike>(
           (cheat) =>
             (!filters.category || filters.category === category) &&
             (filters.status === "all" ||
-              (filters.status === "enabled" ? cheat.enabled : !cheat.enabled)) &&
-            (!query || fuzzyMatch(cheat.name, query) || fuzzyMatch(cheat.description, query))
+              (filters.status === "enabled"
+                ? cheat.enabled
+                : !cheat.enabled)) &&
+            (!query ||
+              fuzzyMatch(cheat.name, query) ||
+              fuzzyMatch(cheat.description, query)),
         )
         .sort((a, b) => a.name.localeCompare(b.name))
-        .map((cheat) => ({ category, cheat }))
+        .map((cheat) => ({ category, cheat })),
     );
 }

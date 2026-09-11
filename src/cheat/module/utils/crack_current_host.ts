@@ -1,6 +1,6 @@
 import * as stdout from "../../output";
 import * as stdin from "../../input";
-import type { Pane } from "../../../pane";
+import type { Pane } from "../../../terminal/pane";
 import { saveDefaultCheats, type Cheat } from "../../registry";
 import { renderCheatDrawer } from "../../ui";
 import * as crack from "../glob/hashcrack";

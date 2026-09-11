@@ -5,16 +5,16 @@ import type {
   SplitDirection,
   SplitNode,
   Tab,
-} from "./types";
-import { blankConnection, cloneConnection } from "./types";
-import { SSH_HOST } from "./types";
+} from "../core/types";
+import { blankConnection, cloneConnection } from "../core/types";
+import { SSH_HOST } from "../core/types";
 import { Pane } from "./pane";
 import { connectShell, disconnectShell, writeToPty } from "./shell";
-import { cloneCheatState, defaultCheatState } from "./cheat/registry";
-import type { CheatState } from "./cheat/registry";
-import { dispatchKey } from "./cheat/pencilgon";
-import { refreshChrome } from "./chrome";
-import { isTestMode } from "./test-mode";
+import { cloneCheatState, defaultCheatState } from "../cheat/registry";
+import type { CheatState } from "../cheat/registry";
+import { dispatchKey } from "../cheat/pencilgon";
+import { refreshChrome } from "../ui/chrome";
+import { isTestMode } from "../core/test-mode";
 
 export const MIN_PANE_WIDTH = 320;
 export const MIN_PANE_HEIGHT = 200;
@@ -65,14 +65,19 @@ function firstLeaf(node: SplitNode): LeafNode {
 export function createTab(
   connection: ConnectionConfig = blankConnection(),
   cheats: CheatState = defaultCheatState(),
-  isDefault = false
+  isDefault = false,
 ): Tab {
   const pane = new Pane(connection, cheats);
   pane.isDefault = isDefault;
   const leaf: LeafNode = { kind: "leaf", pane, parent: null };
   const pageEl = document.createElement("div");
   pageEl.className = "tab-page";
-  const tab: Tab = { id: crypto.randomUUID(), root: leaf, focusedLeaf: leaf, pageEl };
+  const tab: Tab = {
+    id: crypto.randomUUID(),
+    root: leaf,
+    focusedLeaf: leaf,
+    pageEl,
+  };
   wireLeaf(tab, leaf);
   tabs.push(tab);
   workspaceEl().appendChild(pageEl);
@@ -150,12 +155,19 @@ function resetDefaultTab(tab: Tab): void {
 
 /** Split a leaf. Returns the new pane, or null if the split was rejected
  *  (a resulting leaf would be smaller than 320x200 px). */
-export function splitLeaf(tab: Tab, leaf: LeafNode, dir: SplitDirection): Pane | null {
+export function splitLeaf(
+  tab: Tab,
+  leaf: LeafNode,
+  dir: SplitDirection,
+): Pane | null {
   const rect = leaf.pane.el.getBoundingClientRect();
   if (dir === "row" && rect.width / 2 < MIN_PANE_WIDTH) return null;
   if (dir === "col" && rect.height / 2 < MIN_PANE_HEIGHT) return null;
 
-  const child = new Pane(cloneConnection(leaf.pane.connection), cloneCheatState(leaf.pane.cheats));
+  const child = new Pane(
+    cloneConnection(leaf.pane.connection),
+    cloneCheatState(leaf.pane.cheats),
+  );
   child.isDefault = leaf.pane.isDefault;
   const childLeaf: LeafNode = { kind: "leaf", pane: child, parent: null };
   const branch: BranchNode = {
@@ -270,12 +282,20 @@ function renderNode(tab: Tab, node: SplitNode): HTMLElement {
 }
 
 function applyRatio(container: HTMLElement, branch: BranchNode): void {
-  const [aEl, , bEl] = container.children as unknown as [HTMLElement, HTMLElement, HTMLElement];
+  const [aEl, , bEl] = container.children as unknown as [
+    HTMLElement,
+    HTMLElement,
+    HTMLElement,
+  ];
   aEl.style.flex = branch.ratio + " 1 0%";
   bEl.style.flex = 1 - branch.ratio + " 1 0%";
 }
 
-function makeDivider(tab: Tab, branch: BranchNode, container: HTMLElement): HTMLElement {
+function makeDivider(
+  tab: Tab,
+  branch: BranchNode,
+  container: HTMLElement,
+): HTMLElement {
   const divider = document.createElement("div");
   divider.className = "divider " + branch.dir;
   divider.addEventListener("pointerdown", (e) => {
@@ -295,7 +315,8 @@ function makeDivider(tab: Tab, branch: BranchNode, container: HTMLElement): HTML
     applyRatio(container, branch);
   });
   const end = (e: PointerEvent) => {
-    if (divider.hasPointerCapture(e.pointerId)) divider.releasePointerCapture(e.pointerId);
+    if (divider.hasPointerCapture(e.pointerId))
+      divider.releasePointerCapture(e.pointerId);
     divider.classList.remove("dragging");
     refitTab(tab);
   };
@@ -355,7 +376,8 @@ export function renderTabBar(): void {
     });
 
     el.addEventListener("pointerdown", (e) => {
-      if (e.button !== 0 || (e.target as HTMLElement).closest(".tab-close")) return;
+      if (e.button !== 0 || (e.target as HTMLElement).closest(".tab-close"))
+        return;
       startX = e.clientX;
       const rect = el.getBoundingClientRect();
       originLeft = rect.left;
@@ -391,7 +413,9 @@ export function renderTabBar(): void {
         if (candidate === el) return;
         const rect = candidate.getBoundingClientRect();
         if (center < rect.left + rect.width / 2) {
-          const candidateIndex = tabs.findIndex((item) => item.id === candidate.dataset.tabId);
+          const candidateIndex = tabs.findIndex(
+            (item) => item.id === candidate.dataset.tabId,
+          );
           if (candidateIndex >= 0 && to === tabs.length) to = candidateIndex;
         }
       });
@@ -480,9 +504,15 @@ function wireLeaf(tab: Tab, leaf: LeafNode): void {
   });
 
   pane.el.addEventListener("contextmenu", (e: MouseEvent) => {
-    const isToolbar = (e.target as HTMLElement | null)?.closest(".pane-toolbar");
+    const isToolbar = (e.target as HTMLElement | null)?.closest(
+      ".pane-toolbar",
+    );
     // If mouse tracking mode is enabled in the terminal app, let the application receive right click
-    if (!isToolbar && pane.term.modes.mouseTrackingMode !== "none" && !e.shiftKey) {
+    if (
+      !isToolbar &&
+      pane.term.modes.mouseTrackingMode !== "none" &&
+      !e.shiftKey
+    ) {
       return;
     }
     e.preventDefault();
@@ -494,19 +524,21 @@ function wireLeaf(tab: Tab, leaf: LeafNode): void {
     }
   });
 
-  pane.el.querySelector(".pane-toolbar")?.addEventListener("click", (e: Event) => {
-    const action = (e.target as HTMLElement).dataset?.action;
-    if (!action) return;
-    e.stopPropagation();
-    focusLeaf(tab, leaf);
-    if (action === "split-right") splitLeaf(tab, leaf, "row");
-    else if (action === "split-down") splitLeaf(tab, leaf, "col");
-    else if (action === "close") closeLeaf(tab, leaf);
-    else if (action === "overflow") {
-      const rect = (e.target as HTMLElement).getBoundingClientRect();
-      openPaneMenu(rect.left, rect.bottom + 4, tab, leaf);
-    }
-  });
+  pane.el
+    .querySelector(".pane-toolbar")
+    ?.addEventListener("click", (e: Event) => {
+      const action = (e.target as HTMLElement).dataset?.action;
+      if (!action) return;
+      e.stopPropagation();
+      focusLeaf(tab, leaf);
+      if (action === "split-right") splitLeaf(tab, leaf, "row");
+      else if (action === "split-down") splitLeaf(tab, leaf, "col");
+      else if (action === "close") closeLeaf(tab, leaf);
+      else if (action === "overflow") {
+        const rect = (e.target as HTMLElement).getBoundingClientRect();
+        openPaneMenu(rect.left, rect.bottom + 4, tab, leaf);
+      }
+    });
 }
 
 export function focusLeaf(tab: Tab, leaf: LeafNode): void {
@@ -519,7 +551,10 @@ export function focusLeaf(tab: Tab, leaf: LeafNode): void {
 function updateFocusVisuals(): void {
   for (const tab of tabs) {
     for (const leaf of walkLeaves(tab.root)) {
-      leaf.pane.el.classList.toggle("focused", tab === activeTab && leaf === tab.focusedLeaf);
+      leaf.pane.el.classList.toggle(
+        "focused",
+        tab === activeTab && leaf === tab.focusedLeaf,
+      );
     }
   }
 }

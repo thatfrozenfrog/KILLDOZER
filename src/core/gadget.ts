@@ -1,7 +1,7 @@
 export const DEBUG = import.meta.env.DEV;
 
 export async function sleep(ms: number) {
-    return new Promise((resolve) => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 const colors = {

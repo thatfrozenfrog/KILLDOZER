@@ -1,8 +1,8 @@
 import * as stdout from "../../output";
 import * as stdin from "../../input";
-import type { Pane } from "../../../pane";
+import type { Pane } from "../../../terminal/pane";
 import type { Cheat } from "../../registry";
-import { sleep } from "../../../gadget";
+import { sleep } from "../../../core/gadget";
 
 export type MoveDirection = "Left" | "Right" | "Up" | "Down";
 const MOVES: MoveDirection[] = ["Left", "Right", "Up", "Down"];

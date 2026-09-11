@@ -4,7 +4,10 @@ import { confirmDialog } from "./drawers";
 
 let checking = false;
 
-function showToast(message: string, kind: "success" | "error" = "success"): void {
+function showToast(
+  message: string,
+  kind: "success" | "error" = "success",
+): void {
   const toast = document.createElement("div");
   toast.className = `toast ${kind}`;
   toast.textContent = message;
@@ -13,7 +16,9 @@ function showToast(message: string, kind: "success" | "error" = "success"): void
 }
 
 function setOutdated(outdated: boolean): void {
-  document.getElementById("app-outdated")?.classList.toggle("hidden", !outdated);
+  document
+    .getElementById("app-outdated")
+    ?.classList.toggle("hidden", !outdated);
 }
 
 async function checkForUpdates(button: HTMLButtonElement): Promise<void> {
@@ -39,7 +44,7 @@ async function checkForUpdates(button: HTMLButtonElement): Promise<void> {
     const confirmed = await confirmDialog(
       `Killdozer ${update.version} is available. Install now?${notes}`,
       "Update Available",
-      "Install"
+      "Install",
     );
     if (!confirmed) return;
 
@@ -64,7 +69,7 @@ async function checkForUpdates(button: HTMLButtonElement): Promise<void> {
         headers: {
           Accept: "application/octet-stream",
         },
-      }
+      },
     );
     showToast("Update installed; restarting…");
     await relaunch();
@@ -81,7 +86,9 @@ async function checkForUpdates(button: HTMLButtonElement): Promise<void> {
 
 export function setupUpdater(): void {
   const versionEl = document.getElementById("app-version");
-  if (versionEl) versionEl.textContent = typeof __VERSION__ !== "undefined" ? `v${__VERSION__}` : "";
+  if (versionEl)
+    versionEl.textContent =
+      typeof __VERSION__ !== "undefined" ? `v${__VERSION__}` : "";
 
   void check({
     headers: {

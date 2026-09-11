@@ -1,9 +1,9 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { ConnectionConfig } from "./types";
-import { SSH_HOST, SSH_PORT, blankConnection } from "./types";
+import type { ConnectionConfig } from "../core/types";
+import { SSH_HOST, SSH_PORT, blankConnection } from "../core/types";
 import { Pane, panesBySession } from "./pane";
-import { refreshChrome } from "./chrome";
-import { isTestMode } from "./test-mode";
+import { refreshChrome } from "../ui/chrome";
+import { isTestMode } from "../core/test-mode";
 
 const STORAGE_KEY = "shell-settings";
 
@@ -20,11 +20,16 @@ export function loadDefaultConnection(): ConnectionConfig {
       proxyUsername: string;
       proxyPassword: string;
     }>;
-    if (typeof settings.proxyAddress === "string") config.proxyAddress = settings.proxyAddress;
-    if (typeof settings.proxyPort === "string") config.proxyPort = settings.proxyPort;
-    if (typeof settings.proxyAuthEnabled === "boolean") config.proxyAuthEnabled = settings.proxyAuthEnabled;
-    if (typeof settings.proxyUsername === "string") config.proxyUsername = settings.proxyUsername;
-    if (typeof settings.proxyPassword === "string") config.proxyPassword = settings.proxyPassword;
+    if (typeof settings.proxyAddress === "string")
+      config.proxyAddress = settings.proxyAddress;
+    if (typeof settings.proxyPort === "string")
+      config.proxyPort = settings.proxyPort;
+    if (typeof settings.proxyAuthEnabled === "boolean")
+      config.proxyAuthEnabled = settings.proxyAuthEnabled;
+    if (typeof settings.proxyUsername === "string")
+      config.proxyUsername = settings.proxyUsername;
+    if (typeof settings.proxyPassword === "string")
+      config.proxyPassword = settings.proxyPassword;
   } catch (error) {
     console.error("Failed to load shell settings:", error);
   }
@@ -42,7 +47,7 @@ export function saveDefaultConnection(config: ConnectionConfig): void {
       proxyAuthEnabled: config.proxyAuthEnabled,
       proxyUsername: config.proxyUsername,
       proxyPassword: config.proxyPassword,
-    })
+    }),
   );
 }
 
@@ -111,7 +116,7 @@ export async function connectShell(pane: Pane): Promise<void> {
     pane.sessionId = null;
     pane.setState("disconnected");
     pane.term.writeln(
-      "\r\n\x1b[31m\u2717 Failed to start shell: " + error + "\x1b[0m\r\n"
+      "\r\n\x1b[31m\u2717 Failed to start shell: " + error + "\x1b[0m\r\n",
     );
   }
   refreshChrome();

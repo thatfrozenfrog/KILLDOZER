@@ -3,7 +3,7 @@ import "@fontsource-variable/jetbrains-mono";
 import "@fontsource/fira-code/400.css";
 import "@fontsource/fira-code/500.css";
 
-import { setupEventListeners } from "./events";
+import { setupEventListeners } from "../terminal/events";
 import {
   allPanes,
   closePaneMenu,
@@ -11,22 +11,22 @@ import {
   getFocusedPane,
   setupWorkspace,
   tabs,
-} from "./workspace";
-import { closeDrawers, setupDrawers } from "./drawers";
-import { setupCheatDrawer } from "./cheat/ui";
-import * as pencilgon from "./cheat/pencilgon";
-import * as stdin from "./cheat/input";
-import * as stdout from "./cheat/output";
-import { applyScheme, currentScheme, schemes } from "./theme";
-import { loadDefaultConnection } from "./shell";
-import { defaultCheatState } from "./cheat/registry";
-import { refreshChrome } from "./chrome";
-import { DEBUG } from "./gadget";
+} from "../terminal/workspace";
+import { closeDrawers, setupDrawers } from "../ui/drawers";
+import { setupCheatDrawer } from "../cheat/ui";
+import * as pencilgon from "../cheat/pencilgon";
+import * as stdin from "../cheat/input";
+import * as stdout from "../cheat/output";
+import { applyScheme, currentScheme, schemes } from "../ui/theme";
+import { loadDefaultConnection } from "../terminal/shell";
+import { defaultCheatState } from "../cheat/registry";
+import { refreshChrome } from "../ui/chrome";
+import { DEBUG } from "../core/gadget";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { setupUpdater } from "./updater";
-import { initTestMode, setupTestModeOverlay } from "./test-mode";
-import { initDozer } from "./dozer";
-import { setupLatencyMonitoring } from "./latency";
+import { setupUpdater } from "../ui/updater";
+import { initTestMode, setupTestModeOverlay } from "../core/test-mode";
+import { initDozer } from "../dozer/dozer";
+import { setupLatencyMonitoring } from "../ui/latency";
 
 function setupWindowControls(): void {
   const appWindow = getCurrentWindow();
