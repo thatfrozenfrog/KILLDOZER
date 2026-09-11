@@ -12,7 +12,12 @@ export interface CheatHandler {
   onData?(pane: Pane, cheat: Cheat, data: string): Promise<void> | void;
   onTermChange?(pane: Pane, cheat: Cheat): Promise<void> | void;
   onKey?(pane: Pane, cheat: Cheat, key: string): Promise<void> | void;
-  onConfigChange?(pane: Pane, cheat: Cheat, label: string, value: any): Promise<void> | void;
+  onConfigChange?(
+    pane: Pane,
+    cheat: Cheat,
+    label: string,
+    value: any,
+  ): Promise<void> | void;
   onTick?(pane: Pane, cheat: Cheat): Promise<void> | void;
 }
 
@@ -35,7 +40,10 @@ function toCanonicalKey(str: string): string {
 }
 
 /** Dynamically register or update a cheat handler at runtime */
-export function registerCheatHandler(name: string, handler: CheatHandler): void {
+export function registerCheatHandler(
+  name: string,
+  handler: CheatHandler,
+): void {
   CHEAT_HANDLERS[name] = handler;
   CHEAT_HANDLERS[name.toLowerCase()] = handler;
   CHEAT_HANDLERS[toCanonicalKey(name)] = handler;
@@ -51,7 +59,9 @@ function registerAllModules(modules: Record<string, CheatModuleExports>): void {
     const filenameMatch = path.match(/\/([^/]+)\.ts$/);
     const filename = filenameMatch ? filenameMatch[1] : "";
 
-    const handler = (mod.default && typeof mod.default === "object" ? mod.default : mod) as CheatHandler;
+    const handler = (
+      mod.default && typeof mod.default === "object" ? mod.default : mod
+    ) as CheatHandler;
 
     if (explicitName) {
       registerCheatHandler(explicitName, handler);
@@ -67,12 +77,16 @@ function registerAllModules(modules: Record<string, CheatModuleExports>): void {
 }
 
 // Auto-discover and eagerly load all current and future cheat scripts inside /cheat/module/**
-const cheatModules = import.meta.glob<CheatModuleExports>("./module/**/*.ts", { eager: true });
+const cheatModules = import.meta.glob<CheatModuleExports>("./module/**/*.ts", {
+  eager: true,
+});
 registerAllModules(cheatModules);
 
 /** Force reload all cheat modules and update CHEAT_HANDLERS in-place */
 export function reloadCheatModules(): Record<string, CheatHandler> {
-  const fresh = import.meta.glob<CheatModuleExports>("./module/**/*.ts", { eager: true });
+  const fresh = import.meta.glob<CheatModuleExports>("./module/**/*.ts", {
+    eager: true,
+  });
   registerAllModules(fresh);
 
   // Auto-unlock any pane left stuck in busy state
@@ -83,7 +97,7 @@ export function reloadCheatModules(): Record<string, CheatHandler> {
   const registeredKeys = Object.keys(CHEAT_HANDLERS);
   console.log(
     `[Pencilgon] Reloaded cheat modules (${registeredKeys.length} aliases registered):`,
-    registeredKeys
+    registeredKeys,
   );
   return CHEAT_HANDLERS;
 }
@@ -111,9 +125,26 @@ function getHandler(cheat: Cheat): CheatHandler | undefined {
   );
 }
 
+function disableConflictingInputMode(pane: Pane, cheat: Cheat): void {
+  if (
+    !cheat.enabled ||
+    (cheat.name !== "Turbo mode" && cheat.name !== "Safe mode")
+  )
+    return;
+
+  const conflictingName =
+    cheat.name === "Turbo mode" ? "Safe mode" : "Turbo mode";
+  for (const cheats of Object.values(pane.cheats)) {
+    const conflictingCheat = cheats.find(
+      (candidate) => candidate.name === conflictingName,
+    );
+    if (conflictingCheat) conflictingCheat.enabled = false;
+  }
+}
+
 function forEachEnabledCheat(
   pane: Pane,
-  fn: (cheat: Cheat, handler: CheatHandler) => Promise<void> | void
+  fn: (cheat: Cheat, handler: CheatHandler) => Promise<void> | void,
 ): void {
   if (isCheatEvaluationPaused() || pane.busy) return;
   for (const cat of Object.keys(pane.cheats)) {
@@ -145,7 +176,8 @@ export async function cheatsOrchestrator(): Promise<void> {
         if (pane.state !== "connected" || pane.busy) continue;
         for (const cat of Object.keys(pane.cheats)) {
           for (const cheat of pane.cheats[cat]) {
-            if (!cheat.enabled || pane.busy || runningCheats.has(cheat)) continue;
+            if (!cheat.enabled || pane.busy || runningCheats.has(cheat))
+              continue;
             const handler = getHandler(cheat);
             const run = handler?.onTick;
             if (run) {
@@ -168,21 +200,32 @@ export async function cheatsOrchestrator(): Promise<void> {
 
 export function dispatchData(pane: Pane, data: string): void {
   if (pane.state !== "connected" || pane.busy) return;
-  forEachEnabledCheat(pane, (cheat, handler) => handler.onData?.(pane, cheat, data));
+  forEachEnabledCheat(pane, (cheat, handler) =>
+    handler.onData?.(pane, cheat, data),
+  );
 }
 
 export function dispatchTermChange(pane: Pane): void {
   if (pane.state !== "connected" || pane.busy) return;
-  forEachEnabledCheat(pane, (cheat, handler) => handler.onTermChange?.(pane, cheat));
+  forEachEnabledCheat(pane, (cheat, handler) =>
+    handler.onTermChange?.(pane, cheat),
+  );
 }
 
 export function dispatchKey(pane: Pane, key: string): void {
   if (pane.state !== "connected" || pane.busy) return;
-  forEachEnabledCheat(pane, (cheat, handler) => handler.onKey?.(pane, cheat, key));
+  forEachEnabledCheat(pane, (cheat, handler) =>
+    handler.onKey?.(pane, cheat, key),
+  );
 }
 
-export function dispatchToggle(pane: Pane, cheat: Cheat, enabled: boolean): void {
+export function dispatchToggle(
+  pane: Pane,
+  cheat: Cheat,
+  enabled: boolean,
+): void {
   if (isCheatEvaluationPaused()) return;
+  disableConflictingInputMode(pane, cheat);
   const handler = getHandler(cheat);
   try {
     handler?.onToggle?.(pane, cheat, enabled);
@@ -191,7 +234,12 @@ export function dispatchToggle(pane: Pane, cheat: Cheat, enabled: boolean): void
   }
 }
 
-export function dispatchConfigChange(pane: Pane, cheat: Cheat, label: string, value: any): void {
+export function dispatchConfigChange(
+  pane: Pane,
+  cheat: Cheat,
+  label: string,
+  value: any,
+): void {
   if (isCheatEvaluationPaused()) return;
   console.log(`[ConfigChange] ${cheat.name} -> ${label} =`, value);
   const handler = getHandler(cheat);
@@ -203,9 +251,13 @@ export function dispatchConfigChange(pane: Pane, cheat: Cheat, label: string, va
 }
 
 export function dispatchConnect(pane: Pane): void {
-  forEachEnabledCheat(pane, (cheat, handler) => handler.onConnect?.(pane, cheat));
+  forEachEnabledCheat(pane, (cheat, handler) =>
+    handler.onConnect?.(pane, cheat),
+  );
 }
 
 export function dispatchDisconnect(pane: Pane): void {
-  forEachEnabledCheat(pane, (cheat, handler) => handler.onDisconnect?.(pane, cheat));
+  forEachEnabledCheat(pane, (cheat, handler) =>
+    handler.onDisconnect?.(pane, cheat),
+  );
 }

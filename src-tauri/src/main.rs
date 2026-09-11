@@ -14,6 +14,8 @@ use tauri::Emitter;
 
 use tauri::{async_runtime::Mutex as AsyncMutex, State, Window};
 
+mod descrypt;
+
 struct Session {
     pty_pair: PtyPair,
     writer: Box<dyn Write + Send>,
@@ -276,7 +278,10 @@ async fn create_shell_inner(
     thread::spawn(move || {
         loop {
             // Check if session still exists in registry
-            if !prober_sessions.blocking_lock().contains_key(&prober_session_id) {
+            if !prober_sessions
+                .blocking_lock()
+                .contains_key(&prober_session_id)
+            {
                 break;
             }
 
@@ -289,7 +294,10 @@ async fn create_shell_inner(
                 &prober_proxy_user,
                 &prober_proxy_pass,
             ) {
-                if !prober_sessions.blocking_lock().contains_key(&prober_session_id) {
+                if !prober_sessions
+                    .blocking_lock()
+                    .contains_key(&prober_session_id)
+                {
                     break;
                 }
                 let _ = prober_window.emit(
@@ -402,6 +410,16 @@ fn is_test_server() -> bool {
     std::env::args().any(|arg| arg == "--test-server" || arg == "test")
 }
 
+#[tauri::command]
+fn validate_descrypt_hash(hash: String) -> Result<(), String> {
+    descrypt::validate(&hash)
+}
+
+#[tauri::command]
+fn crack_descrypt_hash(hash: String, candidates: Vec<Vec<u8>>) -> Result<Option<Vec<u8>>, String> {
+    descrypt::crack(&hash, candidates)
+}
+
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_process::init())
@@ -414,7 +432,9 @@ fn main() {
             async_resize_pty,
             async_create_shell,
             async_terminate_shell,
-            is_test_server
+            is_test_server,
+            validate_descrypt_hash,
+            crack_descrypt_hash
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

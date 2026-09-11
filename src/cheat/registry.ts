@@ -1,4 +1,5 @@
-export type ConfigType = "input" | "label" | "checker" | "radio" | "slider" | "button";
+export type ConfigType =
+  "input" | "label" | "checker" | "radio" | "slider" | "button";
 
 export interface ConfigOption {
   type: ConfigType;
@@ -27,14 +28,14 @@ export class Cheat {
   enabled: boolean = false;
 
   constructor(name: string, description: string, config?: ConfigOption[]) {
-    this.name = name; 
+    this.name = name;
     this.description = description;
     this.config = config;
   }
 
   getConfigByLabel(label: string): ConfigOption | undefined {
     return this.config?.find(
-      (cfg) => cfg.label.toLowerCase() === label.toLowerCase()
+      (cfg) => cfg.label.toLowerCase() === label.toLowerCase(),
     );
   }
 
@@ -43,16 +44,51 @@ export class Cheat {
   }
 }
 
-export type CheatState = Record<string, Cheat[]>;
-export type SerializedCheatState = Record<string, Array<{ name: string; enabled: boolean; config?: Array<{ label: string; value?: string | number | boolean }> }>>;
+function normalizeCheatID(id: string): string {
+  return id.toLowerCase().replace(/[\s_-]+/g, "");
+}
+
+export class CheatList extends Array<Cheat> {
+  selectID(id: string): Cheat {
+    const normalizedID = normalizeCheatID(id);
+    const cheat = this.find(
+      (candidate) => normalizeCheatID(candidate.name) === normalizedID,
+    );
+    if (!cheat) throw new Error(`Cheat not found: ${id}`);
+    return cheat;
+  }
+}
+
+function createCheatList(...cheats: Cheat[]): CheatList {
+  return new CheatList(...cheats);
+}
+
+export type CheatState = Record<string, CheatList>;
+export type SerializedCheatState = Record<
+  string,
+  Array<{
+    name: string;
+    enabled: boolean;
+    config?: Array<{ label: string; value?: string | number | boolean }>;
+  }>
+>;
 
 function builtinCheats(): CheatState {
   return {
-    Automation: [
-      new Cheat("Safe mode", "Typewrite input at configured WPM instead of sending instant text chunks.", [
-        { type: "slider", label: "WPM", min: 10, max: 200, value: 60 },
-      ]),
-      new Cheat("Autovon", "Auto parse and decode autovon.exe dialup sequence."),
+    Automation: createCheatList(
+      new Cheat(
+        "Safe mode",
+        "Typewrite input at configured WPM instead of sending instant text chunks.",
+        [{ type: "slider", label: "WPM", min: 10, max: 200, value: 60 }],
+      ),
+      new Cheat(
+        "Turbo mode",
+        "Paste complete text chunks into the terminal immediately.",
+      ),
+      new Cheat(
+        "Autovon",
+        "Auto parse and decode autovon.exe dialup sequence.",
+      ),
       new Cheat("Porthack", "Auto port guessing / autoporting.", [
         { type: "slider", label: "Speed", min: 1, max: 100, value: 50 },
       ]),
@@ -62,35 +98,45 @@ function builtinCheats(): CheatState {
         { type: "input", label: "Password", value: "" },
         { type: "checker", label: "As Guest?", value: true },
       ]),
-    ],
-    Game: [
+    ),
+    Utils: createCheatList(
+      new Cheat("Crack current host", "Crack and relogin the current host."),
+    ),
+    Game: createCheatList(
       new Cheat("Sudoku", "Auto solve sudoku puzzles.", [
-        { type: "slider", label: "Speed", min: 100, max: 1000, value: 200 }
+        { type: "slider", label: "Speed", min: 100, max: 1000, value: 200 },
       ]),
       new Cheat("2048", "Auto play 2048.", [
-        {
-          type: "radio",
-          label: "Strategy",
-          options: ["Conservative", "Aggressive", "Random"],
-          value: "Conservative",
-        },
+        { type: "slider", label: "Speed", min: 100, max: 1000, value: 100 },
+        { type: "slider", label: "Depth", min: 1, max: 25, value: 7 },
       ]),
       new Cheat("Typespeed", "Auto play typespeed.", [
         { type: "slider", label: "WPM", min: 10, max: 200, value: 60 },
-      ])
-    ],
-    Misc: [
-      new Cheat("Terminal spoof", "Spoof terminal rows and columns to arbitrary dimensions.", [
-        { type: "input", label: "Rows", value: "24" },
-        { type: "input", label: "Cols", value: "80" },
-        { type: "button", label: "Set to default" },
       ]),
+    ),
+    Misc: createCheatList(
+      new Cheat(
+        "Terminal spoof",
+        "Spoof terminal rows and columns to arbitrary dimensions.",
+        [
+          { type: "input", label: "Rows", value: "24" },
+          { type: "input", label: "Cols", value: "80" },
+          { type: "button", label: "Set to default" },
+        ],
+      ),
       new Cheat("Killdozer", "Bulldozer companion trigger and customization.", [
-        { type: "slider", label: "Size", min: 20, max: 300, step: 10, value: 100 },
+        {
+          type: "slider",
+          label: "Size",
+          min: 20,
+          max: 300,
+          step: 10,
+          value: 100,
+        },
         { type: "slider", label: "Speed", min: 1, max: 20, step: 1, value: 5 },
         { type: "checker", label: "Random roam", value: false },
       ]),
-    ],
+    ),
   };
 }
 
@@ -102,7 +148,10 @@ function serialize(state: CheatState): SerializedCheatState {
     settings[cat] = state[cat].map((cheat) => ({
       name: cheat.name,
       enabled: cheat.enabled,
-      config: cheat.config?.map((cfg) => ({ label: cfg.label, value: cfg.value })),
+      config: cheat.config?.map((cfg) => ({
+        label: cfg.label,
+        value: cfg.value,
+      })),
     }));
   });
   return settings;
@@ -147,13 +196,15 @@ export function defaultCheatState(): CheatState {
 export function cloneCheatState(state: CheatState): CheatState {
   const clone: CheatState = {};
   for (const cat of Object.keys(state)) {
-    clone[cat] = state[cat].map(
-      (cheat) =>
-        new Cheat(
-          cheat.name,
-          cheat.description,
-          cheat.config?.map((cfg) => ({ ...cfg }))
-        )
+    clone[cat] = createCheatList(
+      ...state[cat].map(
+        (cheat) =>
+          new Cheat(
+            cheat.name,
+            cheat.description,
+            cheat.config?.map((cfg) => ({ ...cfg })),
+          ),
+      ),
     );
     clone[cat].forEach((cheat, i) => (cheat.enabled = state[cat][i].enabled));
   }
@@ -166,5 +217,7 @@ export function saveDefaultCheats(state: CheatState): void {
 }
 
 export function countActive(state: CheatState): number {
-  return Object.values(state).flat().filter((c) => c.enabled).length;
+  return Object.values(state)
+    .flat()
+    .filter((c) => c.enabled).length;
 }

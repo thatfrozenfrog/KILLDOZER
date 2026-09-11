@@ -37,7 +37,10 @@ const SPECIAL_KEY_SEQUENCES = {
   F12: "\x1b[24~",
 };
 
-function combination(ch: string, modifiers = { ctrl: false, alt: false }): string {
+function combination(
+  ch: string,
+  modifiers = { ctrl: false, alt: false },
+): string {
   let result = ch;
   if (modifiers.ctrl) {
     const code = result.toUpperCase().charCodeAt(0) - 64;
@@ -52,7 +55,7 @@ function combination(ch: string, modifiers = { ctrl: false, alt: false }): strin
 export async function sendkey(
   pane: Pane,
   event: string,
-  modifiers = { ctrl: false, alt: false }
+  modifiers = { ctrl: false, alt: false },
 ): Promise<void> {
   let data = "";
   if (event in SPECIAL_KEY_SEQUENCES) {
@@ -68,7 +71,9 @@ export async function sendkey(
 
 function isSafeMode(pane: Pane): { enabled: boolean; wpm: number } {
   for (const cat of Object.keys(pane.cheats)) {
-    const cheat = pane.cheats[cat].find((c) => c.name.toLowerCase() === "safe mode");
+    const cheat = pane.cheats[cat].find(
+      (c) => c.name.toLowerCase() === "safe mode",
+    );
     if (cheat?.enabled) {
       const wpm = Number(cheat.getValue("WPM")) || 60;
       return { enabled: true, wpm };
@@ -77,8 +82,25 @@ function isSafeMode(pane: Pane): { enabled: boolean; wpm: number } {
   return { enabled: false, wpm: 60 };
 }
 
-export async function send(pane: Pane, data: string, raw = false): Promise<void> {
+function routeSendText(pane: Pane, data: string): boolean {
+  const turboEnabled = Object.values(pane.cheats).some((cheats) =>
+    cheats.some(
+      (cheat) => cheat.name.toLowerCase() === "turbo mode" && cheat.enabled,
+    ),
+  );
+  if (!data || !turboEnabled) return false;
+
+  pane.term.paste(data);
+  return true;
+}
+
+export async function send(
+  pane: Pane,
+  data: string,
+  raw = false,
+): Promise<void> {
   if (!raw && data.length > 0) {
+    if (routeSendText(pane, data)) return;
     const safe = isSafeMode(pane);
     if (safe.enabled) {
       const baseDelay = 12000 / Math.max(1, safe.wpm);
@@ -100,7 +122,7 @@ function weightedRandom(min: number, max: number, bias = 0.7): number {
 export async function type(
   pane: Pane,
   data: string,
-  option?: { min?: number; max?: number; pause?: number }
+  option?: { min?: number; max?: number; pause?: number },
 ): Promise<void> {
   const min = option?.min ?? 35;
   const max = option?.max ?? 110;
@@ -117,7 +139,8 @@ export async function type(
     delay *= 1 - momentum * 0.4;
     if (/[.,!?;:]/.test(chr)) delay += randint(150, 300);
     if (chr === " ") delay += randint(80, 220);
-    if (Math.random() < pause && /[a-zA-Z0-9]/.test(chr)) delay += randint(300, 800);
+    if (Math.random() < pause && /[a-zA-Z0-9]/.test(chr))
+      delay += randint(300, 800);
     if (/[.!?]/.test(chr) && next === " ") delay += randint(300, 800);
     await sleep(delay);
   }
@@ -127,16 +150,24 @@ export async function type(
 export async function th_exec(
   pane: Pane,
   command: string,
-  lagOrOptions?: number | { lag?: number; timeout?: number }
+  lagOrOptions?: number | { lag?: number; timeout?: number },
 ): Promise<Array<string>> {
-  const options = typeof lagOrOptions === "number" ? { lag: lagOrOptions } : lagOrOptions;
+  const options =
+    typeof lagOrOptions === "number" ? { lag: lagOrOptions } : lagOrOptions;
   const rtt = pane.latency ?? 100;
-  const effectiveLag = options?.lag ?? Math.min(1500, Math.max(150, Math.round(rtt * 1.3)));
-  const effectiveTimeout = options?.timeout ?? Math.max(30000, rtt * 30);
+  const effectiveLag =
+    options?.lag ?? Math.min(1500, Math.max(150, Math.round(rtt * 1.3)));
+  const effectiveTimeout = options?.timeout ?? Math.max(10000, rtt);
 
-  const spoof = pane.cheats.Misc?.find((c) => c.name === "Terminal spoof" && c.enabled);
-  const origRows = spoof ? Math.max(2, Math.round(Number(spoof.getValue("Rows")) || 24)) : pane.term.rows;
-  const origCols = spoof ? Math.max(2, Math.round(Number(spoof.getValue("Cols")) || 80)) : pane.term.cols;
+  const spoof = pane.cheats.Misc?.find(
+    (c) => c.name === "Terminal spoof" && c.enabled,
+  );
+  const origRows = spoof
+    ? Math.max(2, Math.round(Number(spoof.getValue("Rows")) || 24))
+    : pane.term.rows;
+  const origCols = spoof
+    ? Math.max(2, Math.round(Number(spoof.getValue("Cols")) || 80))
+    : pane.term.cols;
   const origScrollback = pane.term.options.scrollback ?? 1000;
 
   // Temporarily disable truncation: expand scrollback so xterm does not drop lines,
@@ -153,7 +184,7 @@ export async function th_exec(
 
   try {
     await send(pane, command);
-    await new Promise<void>((resolve) => pane.term.write("\u1499", resolve));
+    await new Promise<void>((resolve) => pane.term.write("\u{1F95D}", resolve));
     await sendkey(pane, "Enter");
     await stdout.waitStill(pane, effectiveTimeout, effectiveLag);
 
@@ -164,7 +195,7 @@ export async function th_exec(
       const line = buffer.getLine(i);
       if (line) {
         const text = line.translateToString(true);
-        if (text.includes("\u1499")) break;
+        if (text.includes("\u{1F95D}")) break;
         lines.unshift(text);
       }
     }
