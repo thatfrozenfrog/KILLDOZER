@@ -77,6 +77,17 @@ function builtinCheats(): CheatState {
   return {
     Automation: createCheatList(
       new Cheat(
+        "Basic bridge",
+        "Allow TeleBASIC programs to request selected local automation.",
+        [
+          {
+            type: "checker",
+            label: "Allow credentials",
+            value: false,
+          },
+        ],
+      ),
+      new Cheat(
         "Safe mode",
         "Typewrite input at configured WPM instead of sending instant text chunks.",
         [{ type: "slider", label: "WPM", min: 10, max: 200, value: 60 }],

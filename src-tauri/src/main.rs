@@ -1,12 +1,15 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-use portable_pty::{native_pty_system, Child, CommandBuilder, PtyPair, PtySize};
+use portable_pty::{native_pty_system, Child, CommandBuilder, MasterPty, PtySize};
 use serde::Serialize;
 use std::{
     collections::HashMap,
     io::{BufRead, BufReader, Read, Write},
     net::{TcpStream, ToSocketAddrs},
-    sync::Arc,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc, Mutex as StdMutex,
+    },
     thread,
     time::{Duration, Instant},
 };
@@ -14,12 +17,16 @@ use tauri::Emitter;
 
 use tauri::{async_runtime::Mutex as AsyncMutex, State, Window};
 
+#[allow(dead_code)]
 mod descrypt;
+#[allow(dead_code)]
+mod net;
 
 struct Session {
-    pty_pair: PtyPair,
-    writer: Box<dyn Write + Send>,
-    child: Box<dyn Child + Send + Sync>,
+    master: Arc<StdMutex<Box<dyn MasterPty + Send>>>,
+    writer: Arc<StdMutex<Box<dyn Write + Send>>>,
+    child: Arc<StdMutex<Box<dyn Child + Send + Sync>>>,
+    is_closed: Arc<AtomicBool>,
 }
 
 type Registry = Arc<AsyncMutex<HashMap<String, Session>>>;
@@ -87,11 +94,12 @@ fn measure_latency_sync(
 
         let mut greeting_resp = [0u8; 2];
         stream.read_exact(&mut greeting_resp).ok()?;
-        if greeting_resp[0] != 0x05 {
+        let [socks_ver, auth_method] = greeting_resp;
+        if socks_ver != 0x05 {
             return None;
         }
 
-        if greeting_resp[1] == 0x02 {
+        if auth_method == 0x02 {
             // Username/password auth
             let u_bytes = proxy_username.as_bytes();
             let p_bytes = proxy_password.as_bytes();
@@ -105,10 +113,11 @@ fn measure_latency_sync(
 
             let mut auth_resp = [0u8; 2];
             stream.read_exact(&mut auth_resp).ok()?;
-            if auth_resp[1] != 0x00 {
+            let [_auth_ver, auth_status] = auth_resp;
+            if auth_status != 0x00 {
                 return None;
             }
-        } else if greeting_resp[1] != 0x00 {
+        } else if auth_method != 0x00 {
             return None;
         }
 
@@ -124,7 +133,8 @@ fn measure_latency_sync(
         // SOCKS5 response header: VER, REP, RSV, ATYP
         let mut connect_resp = [0u8; 4];
         stream.read_exact(&mut connect_resp).ok()?;
-        if connect_resp[0] != 0x05 || connect_resp[1] != 0x00 {
+        let [ver, rep, ..] = connect_resp;
+        if ver != 0x05 || rep != 0x00 {
             return None;
         }
 
@@ -254,17 +264,24 @@ async fn create_shell_inner(
         .spawn_command(cmd)
         .map_err(|err| format!("Failed to spawn SSH: {}", err))?;
 
+    let is_closed = Arc::new(AtomicBool::new(false));
+    let is_closed_prober = is_closed.clone();
+
+    let master = Arc::new(StdMutex::new(pty_pair.master));
+    let writer = Arc::new(StdMutex::new(writer));
+    let child = Arc::new(StdMutex::new(child));
+
     state.sessions.lock().await.insert(
         session_id.clone(),
         Session {
-            pty_pair,
+            master,
             writer,
             child,
+            is_closed,
         },
     );
 
     // Background latency prober: runs every 4s while session is active
-    let prober_sessions = state.sessions.clone();
     let prober_window = window.clone();
     let prober_session_id = session_id.clone();
     let prober_host = host.clone();
@@ -275,42 +292,33 @@ async fn create_shell_inner(
     let prober_proxy_user = proxy_username.clone();
     let prober_proxy_pass = proxy_password.clone();
 
-    thread::spawn(move || {
-        loop {
-            // Check if session still exists in registry
-            if !prober_sessions
-                .blocking_lock()
-                .contains_key(&prober_session_id)
-            {
+    thread::spawn(move || loop {
+        if is_closed_prober.load(Ordering::Relaxed) {
+            break;
+        }
+
+        if let Some(rtt_ms) = measure_latency_sync(
+            &prober_host,
+            prober_port,
+            &prober_proxy_addr,
+            &prober_proxy_port,
+            prober_proxy_auth,
+            &prober_proxy_user,
+            &prober_proxy_pass,
+        ) {
+            if is_closed_prober.load(Ordering::Relaxed) {
                 break;
             }
-
-            if let Some(rtt_ms) = measure_latency_sync(
-                &prober_host,
-                prober_port,
-                &prober_proxy_addr,
-                &prober_proxy_port,
-                prober_proxy_auth,
-                &prober_proxy_user,
-                &prober_proxy_pass,
-            ) {
-                if !prober_sessions
-                    .blocking_lock()
-                    .contains_key(&prober_session_id)
-                {
-                    break;
-                }
-                let _ = prober_window.emit(
-                    "pty:latency",
-                    PtyLatencyEvent {
-                        session_id: prober_session_id.clone(),
-                        rtt_ms,
-                    },
-                );
-            }
-
-            thread::sleep(Duration::from_secs(4));
+            let _ = prober_window.emit(
+                "pty:latency",
+                PtyLatencyEvent {
+                    session_id: prober_session_id.clone(),
+                    rtt_ms,
+                },
+            );
         }
+
+        thread::sleep(Duration::from_secs(4));
     });
 
     // Background reader thread owns the reader; on EOF it removes the
@@ -340,11 +348,12 @@ async fn create_shell_inner(
 
         // Only emit exit when we removed the entry ourselves (unexpected
         // exit). An explicit terminate removes the entry first.
-        if sessions
-            .blocking_lock()
-            .remove(&thread_session_id)
-            .is_some()
-        {
+        let removed = {
+            let mut guard = sessions.blocking_lock();
+            guard.remove(&thread_session_id)
+        };
+        if let Some(session) = removed {
+            session.is_closed.store(true, Ordering::Relaxed);
             let _ = session_window.emit("pty:exit", pty_event(&thread_session_id));
         }
     });
@@ -360,14 +369,23 @@ async fn async_write_to_pty(
     data: &str,
     state: State<'_, AppState>,
 ) -> Result<(), String> {
-    let mut sessions = state.sessions.lock().await;
-    match sessions.get_mut(&session_id) {
-        Some(session) => session
-            .writer
-            .write_all(data.as_bytes())
-            .and_then(|_| session.writer.flush())
-            .map_err(|e| format!("Failed to write to PTY: {}", e)),
-        None => Err(format!("No session {}", session_id)),
+    let writer = {
+        let sessions = state.sessions.lock().await;
+        sessions.get(&session_id).map(|s| s.writer.clone())
+    };
+    if let Some(writer) = writer {
+        let data = data.to_string();
+        tauri::async_runtime::spawn_blocking(move || {
+            let mut writer = writer.lock().map_err(|e| format!("Lock error: {}", e))?;
+            writer
+                .write_all(data.as_bytes())
+                .and_then(|_| writer.flush())
+                .map_err(|e| format!("Failed to write to PTY: {}", e))
+        })
+        .await
+        .map_err(|e| format!("Join error: {}", e))?
+    } else {
+        Err(format!("No session {}", session_id))
     }
 }
 
@@ -378,18 +396,25 @@ async fn async_resize_pty(
     cols: u16,
     state: State<'_, AppState>,
 ) -> Result<(), String> {
-    let sessions = state.sessions.lock().await;
-    match sessions.get(&session_id) {
-        Some(session) => session
-            .pty_pair
-            .master
-            .resize(PtySize {
-                rows,
-                cols,
-                ..Default::default()
-            })
-            .map_err(|e| format!("Failed to resize PTY: {}", e)),
-        None => Err(format!("No session {}", session_id)),
+    let master = {
+        let sessions = state.sessions.lock().await;
+        sessions.get(&session_id).map(|s| s.master.clone())
+    };
+    if let Some(master) = master {
+        tauri::async_runtime::spawn_blocking(move || {
+            let master = master.lock().map_err(|e| format!("Lock error: {}", e))?;
+            master
+                .resize(PtySize {
+                    rows,
+                    cols,
+                    ..Default::default()
+                })
+                .map_err(|e| format!("Failed to resize PTY: {}", e))
+        })
+        .await
+        .map_err(|e| format!("Join error: {}", e))?
+    } else {
+        Err(format!("No session {}", session_id))
     }
 }
 
@@ -399,8 +424,17 @@ async fn async_terminate_shell(
     state: State<'_, AppState>,
 ) -> Result<(), String> {
     // Remove first so the reader thread treats EOF as explicit termination.
-    if let Some(mut session) = state.sessions.lock().await.remove(&session_id) {
-        let _ = session.child.kill();
+    let session = state.sessions.lock().await.remove(&session_id);
+    if let Some(session) = session {
+        session.is_closed.store(true, Ordering::Relaxed);
+        let child = session.child.clone();
+        tauri::async_runtime::spawn_blocking(move || {
+            if let Ok(mut child) = child.lock() {
+                let _ = child.kill();
+            }
+        })
+        .await
+        .map_err(|e| format!("Join error: {}", e))?;
     }
     Ok(())
 }
@@ -420,6 +454,53 @@ fn crack_descrypt_hash(hash: String, candidates: Vec<Vec<u8>>) -> Result<Option<
     descrypt::crack(&hash, candidates)
 }
 
+#[tauri::command]
+async fn save_file_dialog(
+    default_name: Option<String>,
+    content: String,
+) -> Result<Option<String>, String> {
+    let mut dialog = rfd::AsyncFileDialog::new()
+        .add_filter("Text Files", &["txt", "log"] as &[&str])
+        .add_filter("All Files", &["*"] as &[&str]);
+
+    if let Some(ref name) = default_name {
+        dialog = dialog.set_file_name(name);
+    }
+
+    if let Some(file) = dialog.save_file().await {
+        let path = file.path().to_path_buf();
+        std::fs::write(&path, content.as_bytes())
+            .map_err(|e| format!("Failed to write file: {}", e))?;
+        Ok(Some(path.to_string_lossy().to_string()))
+    } else {
+        Ok(None)
+    }
+}
+
+#[tauri::command]
+fn find_shortest_path(
+    from_host: String,
+    to_host: String,
+    undirected: Option<bool>,
+) -> Result<Vec<String>, String> {
+    let map = net::global();
+    let path = if undirected.unwrap_or(false) {
+        map.shortest_path_undirected(&from_host, &to_host)
+    } else {
+        map.shortest_path(&from_host, &to_host)
+    };
+
+    path.ok_or_else(|| format!("No path found from '{}' to '{}'", from_host, to_host))
+}
+
+#[tauri::command]
+fn get_host_info(hostname: String) -> Result<net::HostInfo, String> {
+    net::global()
+        .get_host(&hostname)
+        .cloned()
+        .ok_or_else(|| format!("Host '{}' not found", hostname))
+}
+
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_process::init())
@@ -434,7 +515,10 @@ fn main() {
             async_terminate_shell,
             is_test_server,
             validate_descrypt_hash,
-            crack_descrypt_hash
+            crack_descrypt_hash,
+            save_file_dialog,
+            find_shortest_path,
+            get_host_info
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

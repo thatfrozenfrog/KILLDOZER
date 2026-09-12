@@ -10,6 +10,9 @@
     "format:check": "prettier --check . && cargo fmt --manifest-path src-tauri/Cargo.toml -- --check && git ls-files -z -- '*.c' '*.cc' '*.cpp' '*.cxx' '*.h' '*.hh' '*.hpp' '*.hxx' | xargs -0 -r clang-format --dry-run --Werror",
     "prepare": "git rev-parse --git-dir >/dev/null 2>&1 && git config core.hooksPath .githooks || true",
     "preview": "vite preview",
+    "test": "node --experimental-strip-types --test tests/basic-bridge/*.test.ts tests/terminal/*.test.ts",
+    "test:basic-bridge": "node --experimental-strip-types --test tests/basic-bridge/*.test.ts",
+    "test:terminal": "node --experimental-strip-types --test tests/terminal/*.test.ts",
     "release": "./scripts/release.sh",
     "tauri": "tauri",
     "tauri:rs": "cd src-tauri && cargo watch -x \"run --no-default-features\""

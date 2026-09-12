@@ -2,10 +2,14 @@ import type { Pane } from "../../../terminal/pane";
 import type { Cheat } from "../../registry";
 import * as stdin from "../../input";
 import * as stdout from "../../output";
+import { findAutologinPromptLine } from "./autologin-prompt.ts";
+import { sendMainAccountLogin } from "./autologin-flow.ts";
+import { AutologinPromptState } from "./autologin-state.ts";
 
 const LOGIN_KEYWORDS = ["login", "username", "userid", "username?"] as const;
 const PASSWORD_PROMPT_REGEX = /(?:^|\b)password\s*(?::|===>|>)\s*$/i;
 const PAGER_PROMPT_REGEX = /Press any key to continue\s*=>\s*$/i;
+const PASSWORD_PROMPT_TIMEOUT_MS = 5000;
 
 export const LOGIN_PROMPT_REGEX = new RegExp(
   `(?:(?:^|\\b)(?:${LOGIN_KEYWORDS.join("|")})\\s*(?::|===>|>)\\s*$)|^name\\s*\\(.*?\\)\\s*:\\s*$`,
@@ -14,8 +18,7 @@ export const LOGIN_PROMPT_REGEX = new RegExp(
 
 type PromptKind = "root" | "pager" | "login" | "password";
 
-const handledPrompts = new WeakMap<Pane, Map<PromptKind, string>>();
-const queuedPasswords = new WeakSet<Pane>();
+const promptState = new AutologinPromptState<Pane, PromptKind>();
 
 function currentPromptKey(pane: Pane): string {
   const buffer = pane.term.buffer.active;
@@ -24,19 +27,11 @@ function currentPromptKey(pane: Pane): string {
 }
 
 function markPromptHandled(pane: Pane, kind: PromptKind): void {
-  let prompts = handledPrompts.get(pane);
-  if (!prompts) {
-    prompts = new Map();
-    handledPrompts.set(pane, prompts);
-  }
-  prompts.set(kind, currentPromptKey(pane));
+  promptState.mark(pane, kind, currentPromptKey(pane));
 }
 
 function claimPrompt(pane: Pane, kind: PromptKind): boolean {
-  const key = currentPromptKey(pane);
-  if (handledPrompts.get(pane)?.get(kind) === key) return false;
-  markPromptHandled(pane, kind);
-  return true;
+  return promptState.claim(pane, kind, currentPromptKey(pane));
 }
 
 function isPasswordPrompt(line: string): boolean {
@@ -60,18 +55,61 @@ async function waitForCurrentPrompt(
   return false;
 }
 
+type LoginCallback = () => void;
+const submissionListeners = new WeakMap<Pane, Set<LoginCallback>>();
+
+export function notifyLoginSubmitted(pane: Pane): void {
+  const listeners = submissionListeners.get(pane);
+  if (listeners) {
+    for (const callback of [...listeners]) {
+      callback();
+    }
+  }
+}
+
+export function onLoginSubmitted(
+  pane: Pane,
+  callback: LoginCallback,
+): () => void {
+  let listeners = submissionListeners.get(pane);
+  if (!listeners) {
+    listeners = new Set();
+    submissionListeners.set(pane, listeners);
+  }
+  listeners.add(callback);
+  return () => {
+    const list = submissionListeners.get(pane);
+    list?.delete(callback);
+  };
+}
+
 export async function sendCredentials(
   pane: Pane,
   account: string,
   password: string | null,
 ): Promise<void> {
   markPromptHandled(pane, "login");
-  const payload =
-    password === null ? `${account}\r` : `${account}\r${password}\r`;
-  await stdin.send(pane, payload, true);
-  if (password === null) return;
-  queuedPasswords.add(pane);
-  setTimeout(() => queuedPasswords.delete(pane), 5000);
+  if (password === null) {
+    await stdin.send(pane, `${account}\r`, true);
+    notifyLoginSubmitted(pane);
+    return;
+  }
+
+  const result = await sendMainAccountLogin(account, password, {
+    command: `${account}\r`,
+    sendLogin: (command) => stdin.send(pane, command, true),
+    waitForPassword: () =>
+      waitForCurrentPrompt(
+        pane,
+        PASSWORD_PROMPT_REGEX,
+        PASSWORD_PROMPT_TIMEOUT_MS,
+      ),
+    sendPassword: async (secret) => {
+      markPromptHandled(pane, "password");
+      await stdin.send(pane, secret);
+    },
+  });
+  if (result === "submitted") notifyLoginSubmitted(pane);
 }
 
 function getCredentials(cheat: Cheat): {
@@ -105,6 +143,44 @@ async function loginSequence(pane: Pane, cheat: Cheat): Promise<void> {
   await sendCredentials(pane, account, password);
 }
 
+export type AutologinResult = "submitted" | "wrong-prompt" | "timeout";
+
+export async function runAutologinAtCurrentPrompt(
+  pane: Pane,
+  cheat: Cheat,
+  timeoutMs = 20_000,
+): Promise<AutologinResult> {
+  const wasEnabled = cheat.enabled;
+  cheat.enabled = true;
+  promptState.clear(pane);
+
+  try {
+    return await new Promise<AutologinResult>((resolve) => {
+      let resolved = false;
+
+      const timer = setTimeout(() => {
+        if (resolved) return;
+        resolved = true;
+        cleanup();
+        resolve("timeout");
+      }, timeoutMs);
+
+      const cleanup = onLoginSubmitted(pane, () => {
+        if (resolved) return;
+        resolved = true;
+        clearTimeout(timer);
+        cleanup();
+        resolve("submitted");
+      });
+
+      // Check immediately in case prompt is already visible on terminal
+      void onTermChange(pane, cheat);
+    });
+  } finally {
+    cheat.enabled = wasEnabled;
+  }
+}
+
 async function withPaneBusy(
   pane: Pane,
   action: () => Promise<void>,
@@ -117,6 +193,10 @@ async function withPaneBusy(
   }
 }
 
+export function onToggle(pane: Pane): void {
+  promptState.clear(pane);
+}
+
 export async function onTermChange(pane: Pane, cheat: Cheat): Promise<void> {
   if (pane.busy || pane.state !== "connected") return;
 
@@ -126,27 +206,53 @@ export async function onTermChange(pane: Pane, cheat: Cheat): Promise<void> {
     .filter(Boolean);
   const line = recentLines.at(-1) ?? "";
   const previousLine = recentLines.at(-2) ?? "";
+  const isRootPrompt =
+    previousLine.includes("Type NEWUSER to create an account") && line === ".";
+  const isPagerPrompt = PAGER_PROMPT_REGEX.test(line);
+  const isCurrentLoginPrompt = isLoginPrompt(line);
+  const isCurrentPasswordPrompt = isPasswordPrompt(line);
 
-  if (
-    previousLine.includes("Type NEWUSER to create an account") &&
-    line === "." &&
-    claimPrompt(pane, "root")
-  ) {
+  const activePrompts: PromptKind[] = [];
+  if (isRootPrompt) activePrompts.push("root");
+  if (isPagerPrompt) activePrompts.push("pager");
+  if (isCurrentLoginPrompt) activePrompts.push("login");
+  if (isCurrentPasswordPrompt) activePrompts.push("password");
+  promptState.retain(pane, activePrompts);
+
+  if (isRootPrompt && claimPrompt(pane, "root")) {
     await withPaneBusy(pane, async () => {
       const credentials = getMainAccountCredentials(cheat);
       if (!credentials) return;
 
       console.log("[autologin]: Attempting to log in as", credentials.account);
-      await sendCredentials(
-        pane,
-        `login ${credentials.account}`,
-        credentials.password,
-      );
+      if (credentials.password === null) {
+        await sendCredentials(pane, `login ${credentials.account}`, null);
+      } else {
+        markPromptHandled(pane, "login");
+        const result = await sendMainAccountLogin(
+          credentials.account,
+          credentials.password,
+          {
+            sendLogin: (command) => stdin.send(pane, command, true),
+            waitForPassword: () =>
+              waitForCurrentPrompt(
+                pane,
+                PASSWORD_PROMPT_REGEX,
+                PASSWORD_PROMPT_TIMEOUT_MS,
+              ),
+            sendPassword: async (secret) => {
+              markPromptHandled(pane, "password");
+              await stdin.send(pane, secret);
+            },
+          },
+        );
+        if (result === "submitted") notifyLoginSubmitted(pane);
+      }
     });
     return;
   }
 
-  if (PAGER_PROMPT_REGEX.test(line) && claimPrompt(pane, "pager")) {
+  if (isPagerPrompt && claimPrompt(pane, "pager")) {
     await withPaneBusy(pane, async () => {
       await stdin.sendkey(pane, " ");
       if (await waitForCurrentPrompt(pane, LOGIN_PROMPT_REGEX, 3000)) {
@@ -156,19 +262,20 @@ export async function onTermChange(pane: Pane, cheat: Cheat): Promise<void> {
     return;
   }
 
-  if (isLoginPrompt(line) && claimPrompt(pane, "login")) {
+  if (isCurrentLoginPrompt && claimPrompt(pane, "login")) {
     await withPaneBusy(pane, async () => {
       await loginSequence(pane, cheat);
     });
     return;
   }
 
-  if (isPasswordPrompt(line) && claimPrompt(pane, "password")) {
-    if (queuedPasswords.delete(pane)) return;
-
+  if (isCurrentPasswordPrompt && claimPrompt(pane, "password")) {
     await withPaneBusy(pane, async () => {
       const password = ((cheat.getValue("Password") as string) ?? "").trim();
-      if (password) await stdin.send(pane, `${password}\r`);
+      if (password) {
+        await stdin.send(pane, `${password}\r`);
+        notifyLoginSubmitted(pane);
+      }
     });
   }
 }

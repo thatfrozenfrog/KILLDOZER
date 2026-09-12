@@ -1,8 +1,8 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { Pane } from "../terminal/pane";
-import { writeToPty } from "../terminal/shell";
-import { sleep, randint, DEBUG } from "../core/gadget";
-import * as stdout from "./output";
+import type { Pane } from "../terminal/pane.ts";
+import { writeToPty } from "../terminal/shell.ts";
+import { sleep, randint, DEBUG } from "../core/gadget.ts";
+import * as stdout from "./output.ts";
 
 /** Every writer targets one pane's session. */
 
@@ -56,7 +56,10 @@ export async function sendkey(
   pane: Pane,
   event: string,
   modifiers = { ctrl: false, alt: false },
-): Promise<void> {
+  generation?: number,
+): Promise<boolean> {
+  const gen = generation ?? pane.sessionGeneration;
+  if (pane.sessionGeneration !== gen) return false;
   let data = "";
   if (event in SPECIAL_KEY_SEQUENCES) {
     data = SPECIAL_KEY_SEQUENCES[event as keyof typeof SPECIAL_KEY_SEQUENCES];
@@ -65,8 +68,9 @@ export async function sendkey(
   }
   if (data) {
     if (DEBUG) console.log("Sending key:", JSON.stringify(data));
-    await writeToPty(pane, data);
+    return await writeToPty(pane, data, gen);
   }
+  return false;
 }
 
 function isSafeMode(pane: Pane): { enabled: boolean; wpm: number } {
@@ -98,20 +102,23 @@ export async function send(
   pane: Pane,
   data: string,
   raw = false,
-): Promise<void> {
+  generation?: number,
+): Promise<boolean> {
+  const gen = generation ?? pane.sessionGeneration;
+  if (pane.sessionGeneration !== gen) return false;
   if (!raw && data.length > 0) {
-    if (routeSendText(pane, data)) return;
+    if (routeSendText(pane, data)) return true;
     const safe = isSafeMode(pane);
     if (safe.enabled) {
       const baseDelay = 12000 / Math.max(1, safe.wpm);
-      await type(pane, data, {
+      return await type(pane, data, {
         min: Math.max(5, Math.round(baseDelay * 0.7)),
         max: Math.max(10, Math.round(baseDelay * 1.3)),
+        generation: gen,
       });
-      return;
     }
   }
-  await writeToPty(pane, data);
+  return await writeToPty(pane, data, gen);
 }
 
 function weightedRandom(min: number, max: number, bias = 0.7): number {
@@ -122,16 +129,19 @@ function weightedRandom(min: number, max: number, bias = 0.7): number {
 export async function type(
   pane: Pane,
   data: string,
-  option?: { min?: number; max?: number; pause?: number },
-): Promise<void> {
+  option?: { min?: number; max?: number; pause?: number; generation?: number },
+): Promise<boolean> {
+  const generation = option?.generation ?? pane.sessionGeneration;
   const min = option?.min ?? 35;
   const max = option?.max ?? 110;
   const pause = option?.pause ?? 0.03;
 
   let momentum = 0;
   for (let i = 0; i < data.length; i++) {
+    if (pane.sessionGeneration !== generation) return false;
     const chr = data[i];
-    await writeToPty(pane, chr);
+    const written = await writeToPty(pane, chr, generation);
+    if (!written || pane.sessionGeneration !== generation) return false;
     const next = data[i + 1] ?? "";
 
     momentum = /[a-zA-Z0-9]/.test(chr) ? Math.min(momentum + 0.08, 1) : 0;
@@ -143,7 +153,24 @@ export async function type(
       delay += randint(300, 800);
     if (/[.!?]/.test(chr) && next === " ") delay += randint(300, 800);
     await sleep(delay);
+    if (pane.sessionGeneration !== generation) return false;
   }
+  return true;
+}
+
+export interface ThExecResult extends Array<string> {
+  status: "completed" | "timed-out" | "failed" | "aborted";
+  ok: boolean;
+}
+
+function createThExecResult(
+  lines: string[],
+  status: "completed" | "timed-out" | "failed" | "aborted",
+): ThExecResult {
+  const res = [...lines] as ThExecResult;
+  res.status = status;
+  res.ok = status === "completed";
+  return res;
 }
 
 /** Executes a Telehack command on a pane and returns its output lines without pagination. */
@@ -151,13 +178,20 @@ export async function th_exec(
   pane: Pane,
   command: string,
   lagOrOptions?: number | { lag?: number; timeout?: number },
-): Promise<Array<string>> {
+): Promise<ThExecResult> {
+  const generation = pane.sessionGeneration;
+  if (pane.state !== "connected") {
+    return createThExecResult([], "failed");
+  }
+
   const options =
     typeof lagOrOptions === "number" ? { lag: lagOrOptions } : lagOrOptions;
   const rtt = pane.latency ?? 100;
   const effectiveLag =
     options?.lag ?? Math.min(1500, Math.max(150, Math.round(rtt * 1.3)));
   const effectiveTimeout = options?.timeout ?? Math.max(10000, rtt);
+
+  pane.busy = true;
 
   const spoof = pane.cheats.Misc?.find(
     (c) => c.name === "Terminal spoof" && c.enabled,
@@ -170,8 +204,8 @@ export async function th_exec(
     : pane.term.cols;
   const origScrollback = pane.term.options.scrollback ?? 1000;
 
-  // Temporarily disable truncation: expand scrollback so xterm does not drop lines,
-  // and spoof rows to MAGIC_NUMBER so remote pager (e.g. --More--) is bypassed.
+  // Temporarily disable truncation and lock custom size override
+  pane.customSizeOverride = { rows: MAGIC_NUMBER, cols: origCols };
   pane.term.options.scrollback = 500_000;
 
   if (pane.state === "connected" && pane.sessionId) {
@@ -182,15 +216,36 @@ export async function th_exec(
     }).catch(() => {});
   }
 
+  let status: "completed" | "timed-out" | "failed" | "aborted" = "completed";
+  const lines: string[] = [];
+
   try {
-    await send(pane, command);
+    const writeOk = await send(pane, command, false, generation);
+    if (!writeOk) {
+      status = "failed";
+      return createThExecResult([], status);
+    }
     await new Promise<void>((resolve) => pane.term.write("\u{1F95D}", resolve));
-    await sendkey(pane, "Enter");
-    await stdout.waitStill(pane, effectiveTimeout, effectiveLag);
+    const enterOk = await sendkey(
+      pane,
+      "Enter",
+      { ctrl: false, alt: false },
+      generation,
+    );
+    if (!enterOk) {
+      status = "failed";
+      return createThExecResult([], status);
+    }
+
+    const still = await stdout.waitStill(pane, effectiveTimeout, effectiveLag);
+    if (pane.sessionGeneration !== generation) {
+      status = "aborted";
+    } else if (!still) {
+      status = "timed-out";
+    }
 
     const buffer = pane.term.buffer.active;
     const cur = buffer.baseY + buffer.cursorY;
-    const lines: string[] = [];
     for (let i = cur; i >= 0; i--) {
       const line = buffer.getLine(i);
       if (line) {
@@ -199,16 +254,24 @@ export async function th_exec(
         lines.unshift(text);
       }
     }
-    return lines;
+    return createThExecResult(lines, status);
   } finally {
     pane.term.options.scrollback = origScrollback;
+    pane.customSizeOverride = null;
     // Restore original dimensions
-    if (pane.state === "connected" && pane.sessionId) {
+    if (
+      pane.state === "connected" &&
+      pane.sessionId &&
+      pane.sessionGeneration === generation
+    ) {
       await invoke("async_resize_pty", {
         sessionId: pane.sessionId,
         rows: origRows,
         cols: origCols,
       }).catch(() => {});
+    }
+    if (pane.sessionGeneration === generation) {
+      pane.busy = false;
     }
   }
 }

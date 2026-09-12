@@ -17,8 +17,10 @@ import { setupCheatDrawer } from "../cheat/ui";
 import * as pencilgon from "../cheat/pencilgon";
 import * as stdin from "../cheat/input";
 import * as stdout from "../cheat/output";
+import { setupBasicBridge } from "../cheat/basicbridge-app";
 import { applyScheme, currentScheme, schemes } from "../ui/theme";
-import { loadDefaultConnection } from "../terminal/shell";
+import { disconnectShell, loadDefaultConnection } from "../terminal/shell";
+import { disconnectAllPanes } from "../terminal/cleanup";
 import { defaultCheatState } from "../cheat/registry";
 import { refreshChrome } from "../ui/chrome";
 import { DEBUG } from "../core/gadget";
@@ -27,9 +29,20 @@ import { setupUpdater } from "../ui/updater";
 import { initTestMode, setupTestModeOverlay } from "../core/test-mode";
 import { initDozer } from "../dozer/dozer";
 import { setupLatencyMonitoring } from "../ui/latency";
+import { createWindowShutdown } from "./window-shutdown";
 
-function setupWindowControls(): void {
+async function setupWindowControls(): Promise<void> {
   const appWindow = getCurrentWindow();
+  const closeWindow = createWindowShutdown(
+    () => disconnectAllPanes(allPanes(), disconnectShell),
+    () => appWindow.destroy(),
+  );
+
+  await appWindow.onCloseRequested(async (event) => {
+    event.preventDefault();
+    await closeWindow();
+  });
+
   document
     .querySelectorAll<HTMLButtonElement>("[data-window-action]")
     .forEach((button) => {
@@ -40,7 +53,7 @@ function setupWindowControls(): void {
             ? appWindow.minimize()
             : action === "maximize"
               ? appWindow.toggleMaximize()
-              : appWindow.close();
+              : closeWindow();
         void operation.catch(() => {});
       });
     });
@@ -107,13 +120,14 @@ function setupSchemePicker(): void {
 
 async function main(): Promise<void> {
   await initTestMode();
+  setupBasicBridge();
   applyScheme(currentScheme().slug);
   await setupEventListeners();
   setupWorkspace();
   setupDrawers();
   setupCheatDrawer();
   setupSchemePicker();
-  setupWindowControls();
+  await setupWindowControls();
   setupUpdater();
   setupTestModeOverlay();
   initDozer();

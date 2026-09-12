@@ -1,8 +1,8 @@
-import type { Pane } from "../terminal/pane";
-import type { Cheat } from "./registry";
-import { allPanes } from "../terminal/workspace";
-import { sleep } from "../core/gadget";
-import { isCheatEvaluationPaused } from "../core/test-mode";
+import type { Pane } from "../terminal/pane.ts";
+import type { Cheat } from "./registry.ts";
+import { allPanes } from "../terminal/workspace.ts";
+import { sleep } from "../core/gadget.ts";
+import { isCheatEvaluationPaused } from "../core/test-mode.ts";
 export const INTERVAL = 250; // milliseconds
 
 export interface CheatHandler {
@@ -172,27 +172,34 @@ function forEachEnabledCheat(
 export async function cheatsOrchestrator(): Promise<void> {
   while (true) {
     if (!isCheatEvaluationPaused()) {
-      for (const pane of allPanes()) {
-        if (pane.state !== "connected" || pane.busy) continue;
-        for (const cat of Object.keys(pane.cheats)) {
-          for (const cheat of pane.cheats[cat]) {
-            if (!cheat.enabled || pane.busy || runningCheats.has(cheat))
-              continue;
-            const handler = getHandler(cheat);
-            const run = handler?.onTick;
-            if (run) {
-              runningCheats.add(cheat);
-              try {
-                await run(pane, cheat);
-              } catch (e) {
-                console.error(`Error in ${cheat.name}.onTick:`, e);
-              } finally {
-                runningCheats.delete(cheat);
+      await Promise.allSettled(
+        allPanes().map(async (pane) => {
+          if (pane.state !== "connected" || pane.busy) return;
+          for (const cat of Object.keys(pane.cheats)) {
+            for (const cheat of pane.cheats[cat]) {
+              if (
+                !cheat.enabled ||
+                pane.busy ||
+                runningCheats.has(cheat) ||
+                isCheatEvaluationPaused()
+              )
+                continue;
+              const handler = getHandler(cheat);
+              const run = handler?.onTick;
+              if (run) {
+                runningCheats.add(cheat);
+                try {
+                  await run(pane, cheat);
+                } catch (e) {
+                  console.error(`Error in ${cheat.name}.onTick:`, e);
+                } finally {
+                  runningCheats.delete(cheat);
+                }
               }
             }
           }
-        }
-      }
+        }),
+      );
     }
     await sleep(INTERVAL);
   }
@@ -228,7 +235,10 @@ export function dispatchToggle(
   disableConflictingInputMode(pane, cheat);
   const handler = getHandler(cheat);
   try {
-    handler?.onToggle?.(pane, cheat, enabled);
+    const res = handler?.onToggle?.(pane, cheat, enabled);
+    if (res instanceof Promise) {
+      res.catch((e) => console.error(`Error in ${cheat.name}.onToggle:`, e));
+    }
   } catch (e) {
     console.error(`Error in ${cheat.name}.onToggle:`, e);
   }
@@ -244,7 +254,12 @@ export function dispatchConfigChange(
   console.log(`[ConfigChange] ${cheat.name} -> ${label} =`, value);
   const handler = getHandler(cheat);
   try {
-    handler?.onConfigChange?.(pane, cheat, label, value);
+    const res = handler?.onConfigChange?.(pane, cheat, label, value);
+    if (res instanceof Promise) {
+      res.catch((e) =>
+        console.error(`Error in ${cheat.name}.onConfigChange:`, e),
+      );
+    }
   } catch (e) {
     console.error(`Error in ${cheat.name}.onConfigChange:`, e);
   }
@@ -256,8 +271,24 @@ export function dispatchConnect(pane: Pane): void {
   );
 }
 
+/** Disconnect cleanup runs independently of pause or pane busy state. */
 export function dispatchDisconnect(pane: Pane): void {
-  forEachEnabledCheat(pane, (cheat, handler) =>
-    handler.onDisconnect?.(pane, cheat),
-  );
+  for (const cat of Object.keys(pane.cheats)) {
+    for (const cheat of pane.cheats[cat]) {
+      if (!cheat.enabled) continue;
+      const handler = getHandler(cheat);
+      if (handler?.onDisconnect) {
+        try {
+          const res = handler.onDisconnect(pane, cheat);
+          if (res instanceof Promise) {
+            res.catch((e) =>
+              console.error(`Error in ${cheat.name}.onDisconnect:`, e),
+            );
+          }
+        } catch (e) {
+          console.error(`Error in ${cheat.name}.onDisconnect:`, e);
+        }
+      }
+    }
+  }
 }

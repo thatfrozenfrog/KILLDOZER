@@ -1,9 +1,13 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { ConnectionConfig } from "../core/types";
-import { SSH_HOST, SSH_PORT, blankConnection } from "../core/types";
-import { Pane, panesBySession } from "./pane";
-import { refreshChrome } from "../ui/chrome";
-import { isTestMode } from "../core/test-mode";
+import type { ConnectionConfig } from "../core/types.ts";
+import { SSH_HOST, SSH_PORT, blankConnection } from "../core/types.ts";
+import { Pane, panesBySession } from "./pane.ts";
+import { refreshChrome } from "../ui/chrome.ts";
+import { isTestMode } from "../core/test-mode.ts";
+import { resetBasicBridge } from "../cheat/basicbridge.ts";
+import { releasePaneBusy } from "./cleanup.ts";
+
+import { dispatchDisconnect } from "../cheat/pencilgon.ts";
 
 const STORAGE_KEY = "shell-settings";
 
@@ -51,8 +55,16 @@ export function saveDefaultConnection(config: ConnectionConfig): void {
   );
 }
 
-export async function writeToPty(pane: Pane, data: string): Promise<void> {
+export async function writeToPty(
+  pane: Pane,
+  data: string,
+  generation?: number,
+): Promise<boolean> {
+  if (generation !== undefined && pane.sessionGeneration !== generation) {
+    return false;
+  }
   if (isTestMode()) {
+    if (pane.state !== "connected") return false;
     if (data === "\r") {
       pane.term.write("\r\n");
     } else if (data === "\x7f" || data === "\b" || data === "\x08") {
@@ -62,18 +74,27 @@ export async function writeToPty(pane: Pane, data: string): Promise<void> {
     } else {
       pane.term.write(data);
     }
-    return;
+    return true;
   }
   if (pane.state === "connected" && pane.sessionId) {
-    await invoke("async_write_to_pty", {
-      sessionId: pane.sessionId,
-      data,
-    }).catch((e) => console.error("write failed:", e));
+    try {
+      await invoke("async_write_to_pty", {
+        sessionId: pane.sessionId,
+        data,
+      });
+      return true;
+    } catch (e) {
+      console.error("write failed:", e);
+      return false;
+    }
   }
+  return false;
 }
 
 export async function connectShell(pane: Pane): Promise<void> {
   if (pane.state !== "disconnected") return;
+
+  const attemptGeneration = ++pane.sessionGeneration;
 
   if (isTestMode()) {
     const sessionId = crypto.randomUUID();
@@ -112,19 +133,27 @@ export async function connectShell(pane: Pane): Promise<void> {
         : "",
     });
   } catch (error) {
-    panesBySession.delete(sessionId);
-    pane.sessionId = null;
-    pane.setState("disconnected");
-    pane.term.writeln(
-      "\r\n\x1b[31m\u2717 Failed to start shell: " + error + "\x1b[0m\r\n",
-    );
+    // Only clean up if this attempt still owns the pane
+    if (pane.sessionGeneration === attemptGeneration) {
+      panesBySession.delete(sessionId);
+      pane.sessionId = null;
+      pane.setState("disconnected");
+      pane.term.writeln(
+        "\r\n\x1b[31m\u2717 Failed to start shell: " + error + "\x1b[0m\r\n",
+      );
+    }
   }
-  refreshChrome();
+  if (pane.sessionGeneration === attemptGeneration) {
+    refreshChrome();
+  }
 }
 
 export async function disconnectShell(pane: Pane): Promise<void> {
+  releasePaneBusy(pane);
   const sessionId = pane.sessionId;
   if (!sessionId) return;
+  pane.sessionGeneration++;
+  resetBasicBridge(pane, "disconnect");
   panesBySession.delete(sessionId);
   pane.sessionId = null;
   pane.setState("disconnected");
@@ -137,4 +166,5 @@ export async function disconnectShell(pane: Pane): Promise<void> {
   }
   pane.showIdle();
   refreshChrome();
+  dispatchDisconnect(pane);
 }

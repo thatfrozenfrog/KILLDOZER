@@ -56,12 +56,13 @@ export async function onTick(pane: Pane, cheat: Cheat): Promise<void> {
         );
         await sleep(speed ?? 1000);
         await stdin.send(pane, `${port}\r`);
-
+        await stdout.waitChange(pane, 5000);
+        await sleep(speed ?? 1000);
         await stdout.waitFor(
           pane,
-          /try another port|security compromised/i,
+          /%porthack error|security compromised/i,
           5000,
-          3,
+          4,
           pane.latency ?? 400,
         );
         if (
@@ -72,6 +73,14 @@ export async function onTick(pane: Pane, cheat: Cheat): Promise<void> {
           console.log(`[porthack]: Port ${port} successful!`);
           break;
         }
+
+        await stdout.waitFor(
+          pane,
+          "port to try?",
+          5000,
+          1,
+          pane.latency ?? 400,
+        );
       }
     } finally {
       pane.busy = false;

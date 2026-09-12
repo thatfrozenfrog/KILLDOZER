@@ -1,21 +1,24 @@
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { invoke } from "@tauri-apps/api/core";
-import type { ConnectionConfig, ConnectionState } from "../core/types";
-import type { CheatState } from "../cheat/registry";
-import { currentScheme, xtermTheme } from "../ui/theme";
-import { c } from "../core/gadget";
-import { isTestMode } from "../core/test-mode";
-import { dispatchTermChange } from "../cheat/pencilgon";
+import type { ConnectionConfig, ConnectionState } from "../core/types.ts";
+import type { CheatState } from "../cheat/registry.ts";
+import { currentScheme, xtermTheme } from "../ui/theme.ts";
+import { c } from "../core/gadget.ts";
+import { isTestMode } from "../core/test-mode.ts";
+import { dispatchTermChange } from "../cheat/pencilgon.ts";
 
 export const panesBySession = new Map<string, Pane>();
 
 const paneByTermEl = new Map<Element, Pane>();
-const resizeObserver = new ResizeObserver((entries) => {
-  for (const entry of entries) {
-    paneByTermEl.get(entry.target)?.fit();
-  }
-});
+const resizeObserver =
+  typeof ResizeObserver !== "undefined"
+    ? new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          paneByTermEl.get(entry.target)?.fit();
+        }
+      })
+    : null;
 
 let paneSeq = 0;
 const RESIZE_IPC_THROTTLE_MS = 100;
@@ -60,6 +63,10 @@ function registerUrlLinkProvider(term: Terminal): void {
 export class Pane {
   readonly id = `pane-${++paneSeq}`;
   sessionId: string | null = null;
+  /** Monotonically increasing token identifying the active connection attempt/session. */
+  sessionGeneration = 0;
+  /** Temporary size policy applied by command operations (prevents ordinary resize from overriding). */
+  customSizeOverride: { rows: number; cols: number } | null = null;
   state: ConnectionState = "disconnected";
   /** automation lock: a cheat is mid-interaction with this pane's terminal */
   busy = false;
@@ -143,7 +150,7 @@ export class Pane {
     });
 
     paneByTermEl.set(this.termEl, this);
-    resizeObserver.observe(this.termEl);
+    resizeObserver?.observe(this.termEl);
   }
 
   identity(): string {
@@ -176,12 +183,16 @@ export class Pane {
         const spoof = this.cheats.Misc?.find(
           (c) => c.name === "Terminal spoof" && c.enabled,
         );
-        const rows = spoof
-          ? Math.max(2, Math.round(Number(spoof.getValue("Rows")) || 24))
-          : this.term.rows;
-        const cols = spoof
-          ? Math.max(2, Math.round(Number(spoof.getValue("Cols")) || 80))
-          : this.term.cols;
+        const rows = this.customSizeOverride
+          ? this.customSizeOverride.rows
+          : spoof
+            ? Math.max(2, Math.round(Number(spoof.getValue("Rows")) || 24))
+            : this.term.rows;
+        const cols = this.customSizeOverride
+          ? this.customSizeOverride.cols
+          : spoof
+            ? Math.max(2, Math.round(Number(spoof.getValue("Cols")) || 80))
+            : this.term.cols;
         void invoke("async_resize_pty", {
           sessionId: this.sessionId,
           rows,
@@ -260,7 +271,7 @@ export class Pane {
 
   dispose(): void {
     if (this.termChangeTimer) clearTimeout(this.termChangeTimer);
-    resizeObserver.unobserve(this.termEl);
+    resizeObserver?.unobserve(this.termEl);
     paneByTermEl.delete(this.termEl);
     this.term.dispose();
     this.el.remove();

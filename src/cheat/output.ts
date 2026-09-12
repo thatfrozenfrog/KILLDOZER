@@ -79,6 +79,7 @@ export async function waitStill(
   pane: Pane,
   timeout?: number,
   pollInterval?: number,
+  requiredMatches = 2,
 ): Promise<boolean> {
   const rtt = pane.latency ?? 100;
   const effectiveTimeout = timeout ?? Math.max(10000, rtt * 15);
@@ -87,18 +88,21 @@ export async function waitStill(
     pollInterval ?? Math.min(1500, Math.max(200, Math.round(rtt * 1.5)));
 
   const startTime = Date.now();
-  const firstBuffer = getViewport(pane);
-  let lastBuffer = getViewport(pane);
+  let lastBuffer = JSON.stringify(getViewport(pane));
+  let consecutiveMatches = 0;
+
   while (Date.now() - startTime < effectiveTimeout) {
     await new Promise((resolve) => setTimeout(resolve, interval));
-    const currentBuffer = getViewport(pane);
-    if (
-      JSON.stringify(currentBuffer) === JSON.stringify(lastBuffer) &&
-      JSON.stringify(currentBuffer) !== JSON.stringify(firstBuffer)
-    ) {
-      return true;
+    const currentBuffer = JSON.stringify(getViewport(pane));
+    if (currentBuffer === lastBuffer) {
+      consecutiveMatches++;
+      if (consecutiveMatches >= requiredMatches) {
+        return true;
+      }
+    } else {
+      consecutiveMatches = 0;
+      lastBuffer = currentBuffer;
     }
-    lastBuffer = currentBuffer;
   }
   return false;
 }

@@ -14,6 +14,8 @@ import {
   dispatchDisconnect,
 } from "../cheat/pencilgon";
 import { renderLatency } from "../ui/latency";
+import { ingestBasicBridgeData, resetBasicBridge } from "../cheat/basicbridge";
+import { releasePaneBusy } from "./cleanup";
 
 /** One global set of listeners; every event is routed by sessionId. */
 export async function setupEventListeners(): Promise<void> {
@@ -31,6 +33,7 @@ export async function setupEventListeners(): Promise<void> {
     const pane = panesBySession.get(event.payload.sessionId);
     if (!pane) return;
     pane.term.write(event.payload.data);
+    ingestBasicBridgeData(pane, event.payload.data);
     dispatchData(pane, event.payload.data);
   });
 
@@ -44,6 +47,9 @@ export async function setupEventListeners(): Promise<void> {
   await listen<PtyExitPayload>("pty:exit", (event) => {
     const pane = panesBySession.get(event.payload.sessionId);
     if (!pane) return;
+    releasePaneBusy(pane);
+    pane.sessionGeneration++;
+    resetBasicBridge(pane, "disconnect");
     panesBySession.delete(event.payload.sessionId);
     pane.sessionId = null;
     pane.setState("disconnected");
@@ -56,6 +62,9 @@ export async function setupEventListeners(): Promise<void> {
   await listen<PtyErrorPayload>("pty:error", (event) => {
     const pane = panesBySession.get(event.payload.sessionId);
     if (!pane) return;
+    releasePaneBusy(pane);
+    pane.sessionGeneration++;
+    resetBasicBridge(pane, "disconnect");
     panesBySession.delete(event.payload.sessionId);
     pane.sessionId = null;
     pane.setState("disconnected");

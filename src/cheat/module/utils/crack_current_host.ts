@@ -30,6 +30,7 @@ async function crackCurrentHost(pane: Pane, cheat: Cheat): Promise<void> {
   );
   host = host.slice(0, host.indexOf("$"));
   host = host.trim();
+  host = host.split(" ")[0];
   host = host.replace(/[^a-zA-Z0-9\.\-]/g, "");
 
   console.log(
@@ -51,7 +52,10 @@ async function crackCurrentHost(pane: Pane, cheat: Cheat): Promise<void> {
     var state = pane.cheats.Automation.selectID("Autologin").enabled;
     pane.cheats.Automation.selectID("Autologin").enabled = false;
     try {
-      await stdin.sendkey(pane, "D", { ctrl: true, alt: false }); // ^D
+      await stdin.send(pane, "exit");
+      await stdin.sendkey(pane, "Enter");
+      await stdout.waitStill(pane, 2000);
+      //await stdin.sendkey(pane, "D", { ctrl: true, alt: false }); // ^D
       await stdin.th_exec(pane, `telnet ${host}`);
 
       const sawLoginPrompt = await stdout.waitFor(
