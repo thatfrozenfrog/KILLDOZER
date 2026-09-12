@@ -84,6 +84,14 @@ function freshState(): BridgeRuntimeState {
   };
 }
 
+function isActiveRun(
+  runtime: BridgeRuntimeState,
+  runId: string,
+  signal: AbortSignal,
+): boolean {
+  return !signal.aborted && runtime.state !== "idle" && runtime.runId === runId;
+}
+
 export class BasicBridgeRuntime<PaneType extends object> {
   private readonly states = new WeakMap<PaneType, BridgeRuntimeState>();
   private readonly options: BasicBridgeRuntimeOptions<PaneType>;
@@ -316,11 +324,7 @@ export class BasicBridgeRuntime<PaneType extends object> {
     context: BridgeCapabilityContext<PaneType>,
     hasCallback: boolean,
   ): Promise<void> {
-    if (
-      context.signal.aborted ||
-      runtime.state === "idle" ||
-      runtime.runId !== frame.runId
-    ) {
+    if (!isActiveRun(runtime, frame.runId, context.signal)) {
       return;
     }
 
@@ -335,11 +339,7 @@ export class BasicBridgeRuntime<PaneType extends object> {
       result = { ok: false, error: "internal" };
     }
 
-    if (
-      context.signal.aborted ||
-      runtime.state === "idle" ||
-      runtime.runId !== frame.runId
-    ) {
+    if (!isActiveRun(runtime, frame.runId, context.signal)) {
       return;
     }
 

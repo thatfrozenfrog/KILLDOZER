@@ -22,7 +22,9 @@ export function setupBasicBridge(): BasicBridgeRuntime<Pane> {
     isEnabled: bridgeEnabled,
     isPaused: isCheatEvaluationPaused,
     executeCapability: executeBridgeFunction,
-    writeResponse: (pane, response) => stdin.send(pane, response, true),
+    writeResponse: async (pane, response) => {
+      await stdin.send(pane, response, true);
+    },
   });
   configureBasicBridgeRuntime(runtime);
 

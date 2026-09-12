@@ -97,7 +97,9 @@ export async function sendCredentials(
 
   const result = await sendMainAccountLogin(account, password, {
     command: `${account}\r`,
-    sendLogin: (command) => stdin.send(pane, command, true),
+    sendLogin: async (command) => {
+      await stdin.send(pane, command, true);
+    },
     waitForPassword: () =>
       waitForCurrentPrompt(
         pane,
@@ -233,7 +235,9 @@ export async function onTermChange(pane: Pane, cheat: Cheat): Promise<void> {
           credentials.account,
           credentials.password,
           {
-            sendLogin: (command) => stdin.send(pane, command, true),
+            sendLogin: async (command) => {
+              await stdin.send(pane, command, true);
+            },
             waitForPassword: () =>
               waitForCurrentPrompt(
                 pane,
