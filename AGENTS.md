@@ -1,5 +1,8 @@
 # Project Agent Guidelines: KILLDOZER
 
+For the current repository map, commands, persistence rules, and Basic bridge
+extension workflow, read [AGENT.md](AGENT.md) before starting work.
+
 This document provides instructions for AI agents working on the KILLDOZER codebase, specifically detailing the architecture, cheat automation system, conventions, and step-by-step instructions for adding new cheats.
 
 ---
